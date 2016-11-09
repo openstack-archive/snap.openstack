@@ -1,0 +1,6 @@
+[run]
+branch = True
+source = snap_openstack
+
+[report]
+ignore_errors = True
