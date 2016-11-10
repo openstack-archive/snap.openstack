@@ -73,12 +73,12 @@ class OpenStackSnap():
         renderer = SnapFileRenderer()
 
         for dirs in setup['dirs']:
-            dir_name = dirs.format(self.snap_env)
+            dir_name = dirs.format(**self.snap_env)
             ensure_dir(dir_name)
 
         for template in setup['templates']:
             target = setup['templates'][template]
-            target_file = target.format(self.snap_env)
+            target_file = target.format(**self.snap_env)
             ensure_dir(target_file)
             LOG.info('Rendering {} to {}'.format(template,
                                                  target_file))
@@ -100,7 +100,7 @@ class OpenStackSnap():
         cmd = [entry_point['binary']]
 
         for cfile in entry_point.get('config-files', []):
-            cfile = cfile.format(self.snap_env)
+            cfile = cfile.format(**self.snap_env)
             if os.path.exists(cfile):
                 cmd.append('--config-file={}'.format(cfile))
             else:
@@ -108,7 +108,7 @@ class OpenStackSnap():
                             ', skipping'.format(cfile))
 
         for cdir in entry_point.get('config-dirs', []):
-            cdir = cdir.format(self.snap_env)
+            cdir = cdir.format(**self.snap_env)
             if os.path.exists(cdir):
                 cmd.append('--config-dir={}'.format(cdir))
             else:
@@ -117,7 +117,7 @@ class OpenStackSnap():
 
         log_file = entry_point.get('log-file')
         if log_file:
-            log_file = log_file.format(self.snap_env)
+            log_file = log_file.format(**self.snap_env)
             cmd.append('--log-file={}'.format(log_file))
 
         # Ensure any arguments passed to wrapper are propagated
