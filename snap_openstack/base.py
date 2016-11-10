@@ -71,9 +71,11 @@ class OpenStackSnap():
         '''
         setup = self.configuration['setup']
         renderer = SnapFileRenderer()
+        LOG.info(setup)
 
-        for dirs in setup['dirs']:
-            dir_name = dirs.format(**self.snap_env)
+        for dir in setup['dirs']:
+            LOG.info('Ensuring directory {} exists'.format(dir))
+            dir_name = dir.format(**self.snap_env)
             ensure_dir(dir_name)
 
         for template in setup['templates']:
@@ -96,6 +98,7 @@ class OpenStackSnap():
             raise ValueError(_msg)
 
         other_args = argv[:2]
+        LOG.info(entry_point)
         # Build out command to run
         cmd = [entry_point['binary']]
 
