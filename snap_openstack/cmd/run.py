@@ -14,15 +14,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
 import os
 import sys
-import logging
 
 from snap_openstack.base import OpenStackSnap
 
 LOG = logging.getLogger(__name__)
 
 CONFIG_FILE = 'snap-openstack.yaml'
+
 
 def main():
     logging.basicConfig(level=logging.INFO)
@@ -40,4 +41,3 @@ def main():
     else:
         LOG.error('Unable to find snap-openstack.yaml configuration file')
         sys.exit(1)
-

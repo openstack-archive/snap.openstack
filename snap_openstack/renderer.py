@@ -14,15 +14,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os
 import logging
+import os
 
-from jinja2 import FileSystemLoader, Environment, exceptions
+from jinja2 import Environment
+from jinja2.exceptions import TemplateNotFound
+from jinja2 import FileSystemLoader
 
 LOG = logging.getLogger(__name__)
 
 
-class SnapFileRenderer():
+class SnapFileRenderer(object):
     '''Helper class for rendering snap templates for runtime use'''
 
     def __init__(self):
@@ -41,7 +43,7 @@ class SnapFileRenderer():
         '''
         try:
             template = self._tmpl_env.get_template(template_name)
-        except exceptions.TemplateNotFound as te:
+        except TemplateNotFound as te:
             LOG.error('Unable to locate template: {}'.format(template_name))
             raise te
         return template.render(env)

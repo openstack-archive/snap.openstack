@@ -14,9 +14,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
 import os
 import yaml
-import logging
 
 from snap_openstack.renderer import SnapFileRenderer
 
@@ -48,14 +48,20 @@ def snap_env():
 
 
 def ensure_dir(filepath):
-    '''Ensure that the directory structure to support a give file path exists'''
+    '''Ensure a directory exists
+
+    Ensure that the directory structure to support
+    the provided filepath exists.
+
+    @param filepath: string container full path to a file
+    '''
     dir_name = os.path.dirname(filepath)
     if not os.path.exists(dir_name):
         LOG.info('Creating directory {}'.format(dir_name))
         os.makedirs(dir_name, 0o750)
 
 
-class OpenStackSnap():
+class OpenStackSnap(object):
     '''Main executor class for snap-openstack'''
 
     def __init__(self, config_file):
