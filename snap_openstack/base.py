@@ -83,7 +83,7 @@ class OpenStackSnap():
             LOG.info('Rendering {} to {}'.format(template,
                                                  target_file))
             with open(target_file, 'w') as tf:
-                os.fchmod(tf.fileno(), 0o550)
+                os.fchmod(tf.fileno(), 0o640)
                 tf.write(renderer.render(template,
                                          self.snap_env))
 
