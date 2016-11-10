@@ -16,4 +16,4 @@ import pbr.version
 
 
 __version__ = pbr.version.VersionInfo(
-    'snap_openstack').version_string()
+    'snap.openstack').version_string()
