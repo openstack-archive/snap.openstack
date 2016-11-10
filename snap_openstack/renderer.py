@@ -26,17 +26,18 @@ class SnapFileRenderer():
     '''Helper class for rendering snap templates for runtime use'''
 
     def __init__(self):
-        self._loaders = [
-            FileSystemLoader(os.path.join(os.environ.get('SNAP'),
-                                          'templates'))
-        ]
-        self._tmpl_env = Environment(loader=self._loaders)
+        self._tmpl_env = Environment(
+            loader=FileSystemLoader(os.path.join(os.environ.get('SNAP'),
+                                                 'templates')),
+            trim_blocks=True
+        )
 
     def render(self, template_name, env):
-        '''Render j2 template using SNAP environment context
+        '''Render j2 template using SNAP environment context provided
 
         @param template_name: name of the template to use for rendering
-        @return: string of rendered context, ready to write back to a file
+        @param env: dict of variables to pass to the renderer
+        @return: string of rendered data, ready to write back to a file
         '''
         try:
             template = self._tmpl_env.get_template(template_name)
