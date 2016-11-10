@@ -71,21 +71,21 @@ class OpenStackSnap():
         '''
         setup = self.configuration['setup']
         renderer = SnapFileRenderer()
-        LOG.info(setup)
+        LOG.debug(setup)
 
         for directory in setup['dirs']:
             dir_name = directory.format(**self.snap_env)
-            LOG.info('Ensuring directory {} exists'.format(dir_name))
+            LOG.debug('Ensuring directory {} exists'.format(dir_name))
             if not os.path.exists(dir_name):
-                LOG.info('Creating directory {}'.format(dir_name))
+                LOG.debug('Creating directory {}'.format(dir_name))
                 os.makedirs(dir_name, 0o750)
 
         for template in setup['templates']:
             target = setup['templates'][template]
             target_file = target.format(**self.snap_env)
             ensure_dir(target_file)
-            LOG.info('Rendering {} to {}'.format(template,
-                                                 target_file))
+            LOG.debug('Rendering {} to {}'.format(template,
+                                                  target_file))
             with open(target_file, 'w') as tf:
                 os.fchmod(tf.fileno(), 0o640)
                 tf.write(renderer.render(template,
@@ -100,7 +100,7 @@ class OpenStackSnap():
             raise ValueError(_msg)
 
         other_args = argv[2:]
-        LOG.info(entry_point)
+        LOG.debug(entry_point)
         # Build out command to run
         cmd = [entry_point['binary']]
 
@@ -127,5 +127,5 @@ class OpenStackSnap():
 
         # Ensure any arguments passed to wrapper are propagated
         cmd.extend(other_args)
-        LOG.info('Executing command {}'.format(' '.join(cmd)))
+        LOG.debug('Executing command {}'.format(' '.join(cmd)))
         subprocess.check_call(cmd)

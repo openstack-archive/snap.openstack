@@ -33,7 +33,7 @@ def main():
     config_path = os.path.join(snap,
                                CONFIG_FILE)
     if os.path.exists(config_path):
-        LOG.info('Using snap wrapper: {}'.format(config_path))
+        LOG.debug('Using snap wrapper: {}'.format(config_path))
         s_openstack = OpenStackSnap(config_path)
         s_openstack.setup()
         s_openstack.execute(sys.argv)
