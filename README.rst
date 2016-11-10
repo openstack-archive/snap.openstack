@@ -4,9 +4,9 @@ snap.openstack
 
 Helpers for writing Snaps for OpenStack
 
-Please fill here a long description which must be at least 3 lines wrapped on
-80 cols, so that distribution package maintainers can use it in their packages.
-Note that this is a hard requirement.
+This project provides a wrapper for automatically wrapping openstack
+commands in snaps, building out appropriate Oslo configuration and
+logging options on the command line.
 
 * Free software: Apache license
 * Documentation: http://docs.openstack.org/developer/snap.openstack
@@ -16,4 +16,4 @@ Note that this is a hard requirement.
 Features
 --------
 
-* TODO
+* Support for classic mode snap use
