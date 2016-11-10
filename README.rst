@@ -15,7 +15,7 @@ Setup is executed for all entry points prior to execution snap-openstack
 will assure that templated files are in place and that any directory
 structure in $SNAP_COMMON is created.
 
-.. code-block:: bash
+.. code-block:: yaml
 
     setup:
       dirs:
@@ -27,7 +27,7 @@ structure in $SNAP_COMMON is created.
 
 snap-openstack.yaml should also declare entry points for the snap:
 
-.. code-block:: bash
+.. code-block:: yaml
 
     entry_points:
       nova-manage:
