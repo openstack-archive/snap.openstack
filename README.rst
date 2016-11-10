@@ -23,7 +23,7 @@ structure in $SNAP_COMMON is created.
         - "{snap_common}/etc/nova"
         - "{snap_common}/logs"
       templates:
-        "nova-snap.conf.j2": "[snap_common}/etc/nova.conf.d/nova-snap.conf"
+        "nova-snap.conf.j2": "{snap_common}/etc/nova.conf.d/nova-snap.conf"
 
 snap-openstack.yaml should also declare entry points for the snap:
 
@@ -34,7 +34,7 @@ snap-openstack.yaml should also declare entry points for the snap:
         binary: nova-manage
         config-files:
           - "{snap}/etc/nova/nova.conf"
-          - "[snap_common}/etc/nova/nova.conf"
+          - "{snap_common}/etc/nova/nova.conf"
         config-dirs:
           - "{snap_common}/etc/nova.conf.d"
         log-file: "{snap_common}/logs/nova-manage.log"
