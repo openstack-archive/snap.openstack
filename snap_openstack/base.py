@@ -99,7 +99,7 @@ class OpenStackSnap():
             LOG.error(_msg)
             raise ValueError(_msg)
 
-        other_args = argv[:2]
+        other_args = argv[2:]
         LOG.info(entry_point)
         # Build out command to run
         cmd = [entry_point['binary']]
