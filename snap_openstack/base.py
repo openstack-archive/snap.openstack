@@ -73,10 +73,12 @@ class OpenStackSnap():
         renderer = SnapFileRenderer()
         LOG.info(setup)
 
-        for dir in setup['dirs']:
-            LOG.info('Ensuring directory {} exists'.format(dir))
-            dir_name = dir.format(**self.snap_env)
-            ensure_dir(dir_name)
+        for directory in setup['dirs']:
+            dir_name = directory.format(**self.snap_env)
+            LOG.info('Ensuring directory {} exists'.format(dir_name))
+            if not os.path.exists(dir_name):
+                LOG.info('Creating directory {}'.format(dir_name))
+                os.makedirs(dir_name, 0o750)
 
         for template in setup['templates']:
             target = setup['templates'][template]
