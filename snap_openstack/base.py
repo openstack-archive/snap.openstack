@@ -15,7 +15,6 @@
 #    under the License.
 
 import os
-import subprocess
 import yaml
 import logging
 
@@ -128,4 +127,4 @@ class OpenStackSnap():
         # Ensure any arguments passed to wrapper are propagated
         cmd.extend(other_args)
         LOG.debug('Executing command {}'.format(' '.join(cmd)))
-        subprocess.check_call(cmd)
+        os.execvp(entry_point['binary'], cmd)
