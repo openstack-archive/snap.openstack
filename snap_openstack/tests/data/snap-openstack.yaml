@@ -15,6 +15,7 @@ entry_points:
     config-dirs:
       - "{snap_common}/etc/nova.conf.d"
   nova-scheduler:
+    type: simple
     binary: nova-scheduler
     config-files:
       - "{snap}/etc/nova/nova.conf"
@@ -22,3 +23,10 @@ entry_points:
     config-dirs:
       - "{snap_common}/etc/nova.conf.d"
     log-file: "{snap_common}/logs/nova-scheduler.log"
+  keystone-api:
+    type: uwsgi
+    uwsgi-dir: "{snap_common}/etc/uwsgi"
+    log-file: "{snap_common}/logs/keystone.log"
+  nova-broken:
+    type: unknown
+    binary: nova-broken

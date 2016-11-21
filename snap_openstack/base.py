@@ -35,6 +35,15 @@ SNAP_ENV = ['SNAP_NAME',
             'SNAP_USER_COMMON',
             'TMPDIR']
 
+DEFAULT_EP_TYPE = 'simple'
+UWSGI_EP_TYPE = 'uwsgi'
+
+VALID_EP_TYPES = (DEFAULT_EP_TYPE, UWSGI_EP_TYPE)
+
+DEFAULT_UWSGI_ARGS = ["--master",
+                      "--die-on-term",
+                      "--emperor"]
+
 
 def snap_env():
     '''Grab SNAP* environment variables
@@ -106,31 +115,49 @@ class OpenStackSnap(object):
 
         other_args = argv[2:]
         LOG.debug(entry_point)
+
         # Build out command to run
-        cmd = [entry_point['binary']]
+        cmd_type = entry_point.get('type',
+                                   DEFAULT_EP_TYPE)
 
-        for cfile in entry_point.get('config-files', []):
-            cfile = cfile.format(**self.snap_env)
-            if os.path.exists(cfile):
-                cmd.append('--config-file={}'.format(cfile))
-            else:
-                LOG.warning('Configuration file {} not found'
-                            ', skipping'.format(cfile))
+        if cmd_type not in VALID_EP_TYPES:
+            _msg = 'Invalid entry point type: {}'.format(cmd_type)
+            LOG.error(_msg)
+            raise ValueError(_msg)
 
-        for cdir in entry_point.get('config-dirs', []):
-            cdir = cdir.format(**self.snap_env)
-            if os.path.exists(cdir):
-                cmd.append('--config-dir={}'.format(cdir))
-            else:
-                LOG.warning('Configuration directory {} not found'
-                            ', skipping'.format(cdir))
+        if cmd_type == DEFAULT_EP_TYPE:
+            cmd = [entry_point['binary']]
+            for cfile in entry_point.get('config-files', []):
+                cfile = cfile.format(**self.snap_env)
+                if os.path.exists(cfile):
+                    cmd.append('--config-file={}'.format(cfile))
+                else:
+                    LOG.warning('Configuration file {} not found'
+                                ', skipping'.format(cfile))
 
-        log_file = entry_point.get('log-file')
-        if log_file:
-            log_file = log_file.format(**self.snap_env)
-            cmd.append('--log-file={}'.format(log_file))
+            for cdir in entry_point.get('config-dirs', []):
+                cdir = cdir.format(**self.snap_env)
+                if os.path.exists(cdir):
+                    cmd.append('--config-dir={}'.format(cdir))
+                else:
+                    LOG.warning('Configuration directory {} not found'
+                                ', skipping'.format(cdir))
 
-        # Ensure any arguments passed to wrapper are propagated
-        cmd.extend(other_args)
+            log_file = entry_point.get('log-file')
+            if log_file:
+                log_file = log_file.format(**self.snap_env)
+                cmd.append('--log-file={}'.format(log_file))
+
+            # Ensure any arguments passed to wrapper are propagated
+            cmd.extend(other_args)
+
+        elif cmd_type == UWSGI_EP_TYPE:
+            cmd = [UWSGI_EP_TYPE]
+            cmd.extend(DEFAULT_UWSGI_ARGS)
+            uwsgi_dir = entry_point.get('uwsgi-dir')
+            if uwsgi_dir:
+                uwsgi_dir = uwsgi_dir.format(**self.snap_env)
+                cmd.append(uwsgi_dir)
+
         LOG.debug('Executing command {}'.format(' '.join(cmd)))
-        os.execvp(entry_point['binary'], cmd)
+        os.execvp(cmd[0], cmd)

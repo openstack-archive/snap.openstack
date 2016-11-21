@@ -98,3 +98,35 @@ class TestOpenStackSnapExecute(test_base.TestCase):
                           snap.execute,
                           ['snap-openstack',
                            'nova-api'])
+
+    @patch.object(base, 'snap_env')
+    @patch.object(base, 'os')
+    def test_base_snap_config_uwsgi(self, mock_os,
+                                    mock_snap_env):
+        '''Ensure wrapped binary of uwsgi called with correct arguments'''
+        mock_snap_env.return_value = MOCK_SNAP_ENV
+        snap = base.OpenStackSnap(os.path.join(TEST_DIR,
+                                               'snap-openstack.yaml'))
+        mock_os.path.exists.side_effect = self.mock_exists
+        snap.execute(['snap-openstack',
+                      'keystone-api'])
+        mock_os.execvp.assert_called_with(
+            'uwsgi',
+            ['uwsgi', '--master',
+             '--die-on-term', '--emperor',
+             '/var/snap/test/common/etc/uwsgi']
+        )
+
+    @patch.object(base, 'snap_env')
+    @patch.object(base, 'os')
+    def test_base_snap_config_invalid_ep_type(self, mock_os,
+                                              mock_snap_env):
+        '''Ensure endpoint types are correctly validated'''
+        mock_snap_env.return_value = MOCK_SNAP_ENV
+        snap = base.OpenStackSnap(os.path.join(TEST_DIR,
+                                               'snap-openstack.yaml'))
+        mock_os.path.exists.side_effect = self.mock_exists
+        self.assertRaises(ValueError,
+                          snap.execute,
+                          ['snap-openstack',
+                           'nova-broken'])
