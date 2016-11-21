@@ -35,7 +35,7 @@ MOCK_SNAP_ENV = {
 }
 
 
-class TestSnapOpenStack(test_base.TestCase):
+class TestOpenStackSnapExecute(test_base.TestCase):
 
     @classmethod
     def mock_exists(cls, path):
