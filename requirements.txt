@@ -6,3 +6,4 @@ pbr>=1.6 # Apache-2.0
 
 # Left unversioned as designed to align with OpenStack component being snapped
 jinja2
+jsonschema

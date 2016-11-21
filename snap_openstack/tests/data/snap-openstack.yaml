@@ -41,5 +41,11 @@ entry_points:
       - "{snap_common}/etc/nova/nova.conf"
     config-dirs:
       - "{snap_common}/etc/nova.conf.d"
-    log-file:
-      - "{snap_common}/logs/nova-manage.log"
+  nova-scheduler:
+    binary: nova-scheduler
+    config-files:
+      - "{snap}/etc/nova/nova.conf"
+      - "{snap_common}/etc/nova/nova.conf"
+    config-dirs:
+      - "{snap_common}/etc/nova.conf.d"
+    log-file: "{snap_common}/logs/nova-scheduler.log"
