@@ -154,10 +154,16 @@ class OpenStackSnap(object):
         elif cmd_type == UWSGI_EP_TYPE:
             cmd = [UWSGI_EP_TYPE]
             cmd.extend(DEFAULT_UWSGI_ARGS)
+
             uwsgi_dir = entry_point.get('uwsgi-dir')
             if uwsgi_dir:
                 uwsgi_dir = uwsgi_dir.format(**self.snap_env)
                 cmd.append(uwsgi_dir)
+
+            log_file = entry_point.get('log-file')
+            if log_file:
+                log_file = log_file.format(**self.snap_env)
+                cmd.extend(['--logto', log_file])
 
         LOG.debug('Executing command {}'.format(' '.join(cmd)))
         os.execvp(cmd[0], cmd)

@@ -114,7 +114,8 @@ class TestOpenStackSnapExecute(test_base.TestCase):
             'uwsgi',
             ['uwsgi', '--master',
              '--die-on-term', '--emperor',
-             '/var/snap/test/common/etc/uwsgi']
+             '/var/snap/test/common/etc/uwsgi',
+             '--logto', '/var/snap/test/common/logs/keystone.log']
         )
 
     @patch.object(base, 'snap_env')
