@@ -132,16 +132,16 @@ class OpenStackSnap(object):
                 if os.path.exists(cfile):
                     cmd.append('--config-file={}'.format(cfile))
                 else:
-                    LOG.warning('Configuration file {} not found'
-                                ', skipping'.format(cfile))
+                    LOG.debug('Configuration file {} not found'
+                              ', skipping'.format(cfile))
 
             for cdir in entry_point.get('config-dirs', []):
                 cdir = cdir.format(**self.snap_env)
                 if os.path.exists(cdir):
                     cmd.append('--config-dir={}'.format(cdir))
                 else:
-                    LOG.warning('Configuration directory {} not found'
-                                ', skipping'.format(cdir))
+                    LOG.debug('Configuration directory {} not found'
+                              ', skipping'.format(cdir))
 
             log_file = entry_point.get('log-file')
             if log_file:
