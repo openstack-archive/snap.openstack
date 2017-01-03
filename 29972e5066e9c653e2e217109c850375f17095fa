@@ -1,0 +1,8 @@
+Code-Review+2: James Page <james.page@canonical.com>
+Workflow+1: James Page <james.page@canonical.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Tue, 03 Jan 2017 10:54:06 +0000
+Reviewed-on: https://review.openstack.org/416203
+Project: openstack/snap.openstack
+Branch: refs/heads/master
