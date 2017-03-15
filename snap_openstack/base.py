@@ -94,6 +94,13 @@ class OpenStackSnap(object):
                 LOG.debug('Creating directory {}'.format(dir_name))
                 os.makedirs(dir_name, 0o750)
 
+        for target in setup['symlinks']:
+            target_name = target.format(**self.snap_env)
+            link = setup['symlinks'][target]
+            if not os.path.exists(link):
+                LOG.debug('Creating symlink {} to {}'.format(link, target_name))
+                os.symlink(target_name, link)
+
         for template in setup['templates']:
             target = setup['templates'][template]
             target_file = target.format(**self.snap_env)
