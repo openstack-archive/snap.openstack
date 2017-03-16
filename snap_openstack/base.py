@@ -16,6 +16,7 @@
 
 import logging
 import os
+import shutil
 import yaml
 
 from snap_openstack.renderer import SnapFileRenderer
@@ -105,18 +106,27 @@ class OpenStackSnap(object):
             target = setup['templates'][template]
             target_file = target.format(**self.snap_env)
             ensure_dir(target_file)
-            LOG.debug('Rendering {} to {}'.format(template,
-                                                  target_file))
+            LOG.debug('Rendering {} to {}'.format(template, target_file))
             with open(target_file, 'w') as tf:
                 os.fchmod(tf.fileno(), 0o640)
-                tf.write(renderer.render(template,
-                                         self.snap_env))
+                tf.write(renderer.render(template, self.snap_env))
+
+        for source in setup['copyfiles']:
+            source_dir = source.format(**self.snap_env)
+            dest_dir = setup['copyfiles'][source].format(**self.snap_env)
+            for source_name in os.listdir(source_dir):
+                s_file = os.path.join(source_dir, source_name)
+                d_file = os.path.join(dest_dir, source_name)
+                if not os.path.isfile(s_file) or os.path.exists(d_file):
+                    continue
+                LOG.debug('Copying file {} to {}'.format(s_file, d_file))
+                shutil.copy2(s_file, d_file)
 
     def execute(self, argv):
         '''Execute snap command building out configuration and log options'''
         entry_point = self.configuration['entry_points'].get(argv[1])
         if not entry_point:
-            _msg = 'Enable to find entry point for {}'.format(argv[1])
+            _msg = 'Unable to find entry point for {}'.format(argv[1])
             LOG.error(_msg)
             raise ValueError(_msg)
 
