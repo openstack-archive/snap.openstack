@@ -14,9 +14,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import errno
+import grp
 import logging
 import os
+import pwd
 import shutil
+import subprocess
 import yaml
 
 from snap_openstack.renderer import SnapFileRenderer
@@ -57,20 +61,6 @@ def snap_env():
     return _env
 
 
-def ensure_dir(filepath):
-    '''Ensure a directory exists
-
-    Ensure that the directory structure to support
-    the provided filepath exists.
-
-    @param filepath: string container full path to a file
-    '''
-    dir_name = os.path.dirname(filepath)
-    if not os.path.exists(dir_name):
-        LOG.info('Creating directory {}'.format(dir_name))
-        os.makedirs(dir_name, 0o750)
-
-
 class OpenStackSnap(object):
     '''Main executor class for snap-openstack'''
 
@@ -79,21 +69,79 @@ class OpenStackSnap(object):
             self.configuration = yaml.load(config)
         self.snap_env = snap_env()
 
+    def _ensure_dir(self, path, is_file=False):
+        '''Ensure a directory exists
+
+        Ensure that the directory structure to support the provided file or
+        directory exists.
+
+        @param path: string containing full path to file or directory
+        @param is_file: true if directory name needs to be determined for file
+        '''
+        dir_name = path
+        if is_file:
+            dir_name = os.path.dirname(path)
+        LOG.info('Creating directory {}'.format(dir_name))
+        try:
+            os.makedirs(dir_name, 0o750)
+        except OSError as exception:
+            if exception.errno != errno.EEXIST:
+                raise
+
+    def _add_user(self, user, group):
+        '''Add user and group to the system'''
+        try:
+            grp.getgrnam(group)
+        except KeyError:
+            LOG.debug('Adding group {} to system'.format(group))
+            cmd = ['addgroup', '--system', group]
+            subprocess.check_call(cmd)
+
+        try:
+            pwd.getpwnam(user)
+        except KeyError:
+            home = os.path.join("{snap_common}/lib/".format(**self.snap_env), user)
+            self._ensure_dir(home)
+            LOG.debug('Adding user {} to system'.format(user))
+            cmd = ['adduser', '--quiet', '--system', '--home', home,
+                   '--no-create-home', '--ingroup', group, '--shell',
+                   '/bin/false', user]
+            subprocess.check_call(cmd)
+
+    def _chown(self, path, user, group):
+        '''Change the owner of the specified file'''
+        LOG.debug('Changing owner of {} to {}:{}'.format(path, user, group))
+        uid = pwd.getpwnam(user).pw_uid
+        gid = grp.getgrnam(group).gr_gid
+        os.chown(path, uid, gid)
+
+    def _chmod(self, path, mode):
+        '''Change the file mode bits of the specified file'''
+        LOG.debug('Changing file mode bits of {} to {}'.format(path, mode))
+        os.chmod(path, mode)
+
     def setup(self):
         '''Perform any pre-execution snap setup
 
-        Run this method prior to use of the execute metho
+        Run this method prior to use of the execute method.
         '''
         setup = self.configuration['setup']
         renderer = SnapFileRenderer()
         LOG.debug(setup)
 
+        if not setup['user']:
+            _msg = 'A user must be specified in order to drop privileges'
+            LOG.error(_msg)
+            raise ValueError(_msg)
+
+        user = setup['user'].split(':')[0]
+        group = setup['user'].split(':')[1]
+        self._add_user(user, group)
+
         for directory in setup['dirs']:
             dir_name = directory.format(**self.snap_env)
-            LOG.debug('Ensuring directory {} exists'.format(dir_name))
-            if not os.path.exists(dir_name):
-                LOG.debug('Creating directory {}'.format(dir_name))
-                os.makedirs(dir_name, 0o750)
+            self._ensure_dir(dir_name)
+            self._chown(dir_name, user, group)
 
         for link_target in setup['symlinks']:
             link = setup['symlinks'][link_target]
@@ -101,15 +149,18 @@ class OpenStackSnap(object):
             if not os.path.exists(link):
                 LOG.debug('Creating symlink {} to {}'.format(link, target))
                 os.symlink(target, link)
+            self._chmod(dir_name, 0o750)
+            self._chown(link, user, group)
 
         for template in setup['templates']:
             target = setup['templates'][template]
             target_file = target.format(**self.snap_env)
-            ensure_dir(target_file)
+            self._ensure_dir(target_file, is_file=True)
             LOG.debug('Rendering {} to {}'.format(template, target_file))
             with open(target_file, 'w') as tf:
-                os.fchmod(tf.fileno(), 0o640)
                 tf.write(renderer.render(template, self.snap_env))
+            self._chmod(target_file, 0o640)
+            self._chown(target_file, user, group)
 
         for source in setup['copyfiles']:
             source_dir = source.format(**self.snap_env)
@@ -121,6 +172,12 @@ class OpenStackSnap(object):
                     continue
                 LOG.debug('Copying file {} to {}'.format(s_file, d_file))
                 shutil.copy2(s_file, d_file)
+                self._chmod(d_file, 0o640)
+                self._chown(d_file, user, group)
+
+        LOG.debug('Switching process to run under user {}'.format(user))
+        pw = pwd.getpwnam(user)
+        os.setuid(pw.pw_uid)
 
     def execute(self, argv):
         '''Execute snap command building out configuration and log options'''
@@ -134,8 +191,7 @@ class OpenStackSnap(object):
         LOG.debug(entry_point)
 
         # Build out command to run
-        cmd_type = entry_point.get('type',
-                                   DEFAULT_EP_TYPE)
+        cmd_type = entry_point.get('type', DEFAULT_EP_TYPE)
 
         if cmd_type not in VALID_EP_TYPES:
             _msg = 'Invalid entry point type: {}'.format(cmd_type)
