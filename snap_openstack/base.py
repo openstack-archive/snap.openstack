@@ -19,6 +19,8 @@ import os
 import shutil
 import yaml
 
+from oslo_concurrency import lockutils
+
 from snap_openstack.renderer import SnapFileRenderer
 
 LOG = logging.getLogger(__name__)
@@ -79,6 +81,8 @@ class OpenStackSnap(object):
             self.configuration = yaml.load(config)
         self.snap_env = snap_env()
 
+    @lockutils.synchronized('setup.lock', external=True,
+                            lock_path="/var/lock/snap-openstack")
     def setup(self):
         '''Perform any pre-execution snap setup
 
