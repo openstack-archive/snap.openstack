@@ -31,8 +31,8 @@ def main():
     if not snap:
         LOG.error('Not executing in snap environment, exiting')
         sys.exit(1)
-    config_path = os.path.join(snap,
-                               CONFIG_FILE)
+    config_path = os.path.join(snap, CONFIG_FILE)
+    os.environ["OSLO_LOCK_PATH"] = "/tmp/snap-openstack"
     if os.path.exists(config_path):
         LOG.debug('Using snap wrapper: {}'.format(config_path))
         s_openstack = OpenStackSnap(config_path)
