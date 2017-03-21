@@ -19,6 +19,7 @@ import os
 import sys
 
 from snap_openstack.base import OpenStackSnap
+from snap_openstack.lock import locked
 
 LOG = logging.getLogger(__name__)
 
@@ -36,7 +37,8 @@ def main():
     if os.path.exists(config_path):
         LOG.debug('Using snap wrapper: {}'.format(config_path))
         s_openstack = OpenStackSnap(config_path)
-        s_openstack.setup()
+        with locked():
+            s_openstack.setup()
         s_openstack.execute(sys.argv)
     else:
         LOG.error('Unable to find snap-openstack.yaml configuration file')
