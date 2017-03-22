@@ -1,0 +1,8 @@
+Code-Review+2: Dmitrii Shcherbakov <dmitrii.shcherbakov@canonical.com>
+Workflow+1: Corey Bryant <corey.bryant@canonical.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Wed, 22 Mar 2017 19:43:32 +0000
+Reviewed-on: https://review.openstack.org/448273
+Project: openstack/snap.openstack
+Branch: refs/heads/master
