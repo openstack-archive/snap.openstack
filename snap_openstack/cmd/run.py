@@ -26,7 +26,7 @@ CONFIG_FILE = 'snap-openstack.yaml'
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     snap = os.environ.get('SNAP')
     if not snap:
         LOG.error('Not executing in snap environment, exiting')
