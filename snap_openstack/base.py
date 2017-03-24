@@ -43,22 +43,36 @@ class OpenStackSnap(object):
         with open(config_file, 'r') as config:
             self.configuration = yaml.load(config)
 
-    @lockutils.synchronized('setup.lock', external=True,
-                            lock_path="/var/lock/snap-openstack")
-    def setup(self):
-        '''Perform any pre-execution snap setup
+    def _setup_single(self, setup):
+        '''Perform pre-execution snap setup for a single setup dictionary
 
-        Run this method prior to use of the execute method.
+        This method gets executed for each setup_* key in snap-openstack.yaml.
+        There can be multiple such keys, each defining setup that is specific
+        to a single user and service.
         '''
-        setup = self.configuration['setup']
         renderer = SnapFileRenderer()
         utils = SnapUtils()
         LOG.debug(setup)
+
+        if not setup['user'] or not setup['group']:
+            _msg = 'A user and group are required in order to drop privileges'
+            LOG.error(_msg)
+            raise ValueError(_msg)
+
+        user = setup['user']
+        group = setup['group']
+        utils.add_user(user, group)
+
+        root = 'root'
+        default_dir_mode = 0o750
+        default_file_mode = 0o640
 
         if 'dirs' in setup.keys():
             for directory in setup['dirs']:
                 dir_name = directory.format(**utils.snap_env)
                 utils.ensure_dir(dir_name)
+                utils.rchmod(dir_name, default_dir_mode, default_file_mode)
+                utils.rchown(dir_name, root, group)
 
         if 'symlinks' in setup.keys():
             for link_target in setup['symlinks']:
@@ -75,8 +89,9 @@ class OpenStackSnap(object):
                 utils.ensure_dir(target_file, is_file=True)
                 LOG.debug('Rendering {} to {}'.format(template, target_file))
                 with open(target_file, 'w') as tf:
-                    os.fchmod(tf.fileno(), 0o640)
                     tf.write(renderer.render(template, utils.snap_env))
+                utils.chmod(target_file, default_file_mode)
+                utils.chown(target_file, root, group)
 
         if 'copyfiles' in setup.keys():
             for source in setup['copyfiles']:
@@ -89,6 +104,39 @@ class OpenStackSnap(object):
                         continue
                     LOG.debug('Copying file {} to {}'.format(s_file, d_file))
                     shutil.copy2(s_file, d_file)
+                    utils.chmod(d_file, default_file_mode)
+                    utils.chown(d_file, root, group)
+
+        if 'chmod' in setup.keys():
+            for target in setup['chmod']:
+                target_path = target.format(**utils.snap_env)
+                mode = setup['chmod'][target]
+                utils.chmod(target_path, mode)
+
+        if 'chown' in setup.keys():
+            for target in setup['chown']:
+                target_path = target.format(**utils.snap_env)
+                user = setup['chown'][target].split(':')[0]
+                group = setup['chown'][target].split(':')[1]
+                utils.chown(target_path, user, group)
+
+        if 'rchown' in setup.keys():
+            for target in setup['rchown']:
+                target_path = target.format(**utils.snap_env)
+                user = setup['rchown'][target].split(':')[0]
+                group = setup['rchown'][target].split(':')[1]
+                utils.rchown(target_path, user, group)
+
+    @lockutils.synchronized('setup.lock', external=True,
+                            lock_path="/var/lock/snap-openstack")
+    def setup(self):
+        '''Perform all pre-execution snap setup
+
+        Run this method prior to use of the execute method.
+        '''
+        for key in self.configuration:
+            if key.startswith('setup_'):
+                self._setup_single(self.configuration[key])
 
     def execute(self, argv):
         '''Execute snap command building out configuration and log options'''
@@ -99,6 +147,13 @@ class OpenStackSnap(object):
             _msg = 'Unable to find entry point for {}'.format(argv[1])
             LOG.error(_msg)
             raise ValueError(_msg)
+
+        if not entry_point['run-as']:
+            _msg = 'A user:group must be specified in order to drop privileges'
+            LOG.error(_msg)
+            raise ValueError(_msg)
+        user = entry_point['run-as'].split(':')[0]
+        group = entry_point['run-as'].split(':')[1]
 
         other_args = argv[2:]
         LOG.debug(entry_point)
@@ -150,6 +205,8 @@ class OpenStackSnap(object):
             if log_file:
                 log_file = log_file.format(**utils.snap_env)
                 cmd.extend(['--logto', log_file])
+
+        utils.drop_privileges(user, group)
 
         LOG.debug('Executing command {}'.format(' '.join(cmd)))
         os.execvp(cmd[0], cmd)
