@@ -22,21 +22,9 @@ import yaml
 from oslo_concurrency import lockutils
 
 from snap_openstack.renderer import SnapFileRenderer
+from snap_openstack.utils import SnapUtils
 
 LOG = logging.getLogger(__name__)
-
-
-SNAP_ENV = ['SNAP_NAME',
-            'SNAP_VERSION',
-            'SNAP_REVISION',
-            'SNAP_ARCH',
-            'SNAP_LIBRARY_PATH',
-            'SNAP',
-            'SNAP_DATA',
-            'SNAP_COMMON',
-            'SNAP_USER_DATA',
-            'SNAP_USER_COMMON',
-            'TMPDIR']
 
 DEFAULT_EP_TYPE = 'simple'
 UWSGI_EP_TYPE = 'uwsgi'
@@ -48,86 +36,64 @@ DEFAULT_UWSGI_ARGS = ["--master",
                       "--emperor"]
 
 
-def snap_env():
-    '''Grab SNAP* environment variables
-
-    @return dict of all SNAP* environment variables indexed in lower case
-    '''
-    _env = {}
-    for key in SNAP_ENV:
-        _env[key.lower()] = os.environ.get(key)
-    return _env
-
-
-def ensure_dir(filepath):
-    '''Ensure a directory exists
-
-    Ensure that the directory structure to support
-    the provided filepath exists.
-
-    @param filepath: string container full path to a file
-    '''
-    dir_name = os.path.dirname(filepath)
-    if not os.path.exists(dir_name):
-        LOG.info('Creating directory {}'.format(dir_name))
-        os.makedirs(dir_name, 0o750)
-
-
 class OpenStackSnap(object):
     '''Main executor class for snap-openstack'''
 
     def __init__(self, config_file):
         with open(config_file, 'r') as config:
             self.configuration = yaml.load(config)
-        self.snap_env = snap_env()
 
     @lockutils.synchronized('setup.lock', external=True,
                             lock_path="/var/lock/snap-openstack")
     def setup(self):
         '''Perform any pre-execution snap setup
 
-        Run this method prior to use of the execute metho
+        Run this method prior to use of the execute method.
         '''
         setup = self.configuration['setup']
         renderer = SnapFileRenderer()
+        utils = SnapUtils()
         LOG.debug(setup)
 
-        for directory in setup['dirs']:
-            dir_name = directory.format(**self.snap_env)
-            LOG.debug('Ensuring directory {} exists'.format(dir_name))
-            if not os.path.exists(dir_name):
-                LOG.debug('Creating directory {}'.format(dir_name))
-                os.makedirs(dir_name, 0o750)
+        if 'dirs' in setup.keys():
+            for directory in setup['dirs']:
+                dir_name = directory.format(**utils.snap_env)
+                utils.ensure_dir(dir_name)
 
-        for link_target in setup['symlinks']:
-            link = setup['symlinks'][link_target]
-            target = link_target.format(**self.snap_env)
-            if not os.path.exists(link):
-                LOG.debug('Creating symlink {} to {}'.format(link, target))
-                os.symlink(target, link)
+        if 'symlinks' in setup.keys():
+            for link_target in setup['symlinks']:
+                link = setup['symlinks'][link_target]
+                target = link_target.format(**utils.snap_env)
+                if not os.path.exists(link):
+                    LOG.debug('Creating symlink {} to {}'.format(link, target))
+                    os.symlink(target, link)
 
-        for template in setup['templates']:
-            target = setup['templates'][template]
-            target_file = target.format(**self.snap_env)
-            ensure_dir(target_file)
-            LOG.debug('Rendering {} to {}'.format(template, target_file))
-            with open(target_file, 'w') as tf:
-                os.fchmod(tf.fileno(), 0o640)
-                tf.write(renderer.render(template, self.snap_env))
+        if 'templates' in setup.keys():
+            for template in setup['templates']:
+                target = setup['templates'][template]
+                target_file = target.format(**utils.snap_env)
+                utils.ensure_dir(target_file, is_file=True)
+                LOG.debug('Rendering {} to {}'.format(template, target_file))
+                with open(target_file, 'w') as tf:
+                    os.fchmod(tf.fileno(), 0o640)
+                    tf.write(renderer.render(template, utils.snap_env))
 
-        for source in setup['copyfiles']:
-            source_dir = source.format(**self.snap_env)
-            dest_dir = setup['copyfiles'][source].format(**self.snap_env)
-            for source_name in os.listdir(source_dir):
-                s_file = os.path.join(source_dir, source_name)
-                d_file = os.path.join(dest_dir, source_name)
-                if not os.path.isfile(s_file) or os.path.exists(d_file):
-                    continue
-                LOG.debug('Copying file {} to {}'.format(s_file, d_file))
-                shutil.copy2(s_file, d_file)
+        if 'copyfiles' in setup.keys():
+            for source in setup['copyfiles']:
+                source_dir = source.format(**utils.snap_env)
+                dest_dir = setup['copyfiles'][source].format(**utils.snap_env)
+                for source_name in os.listdir(source_dir):
+                    s_file = os.path.join(source_dir, source_name)
+                    d_file = os.path.join(dest_dir, source_name)
+                    if not os.path.isfile(s_file) or os.path.exists(d_file):
+                        continue
+                    LOG.debug('Copying file {} to {}'.format(s_file, d_file))
+                    shutil.copy2(s_file, d_file)
 
     def execute(self, argv):
         '''Execute snap command building out configuration and log options'''
+        utils = SnapUtils()
+
         entry_point = self.configuration['entry_points'].get(argv[1])
         if not entry_point:
             _msg = 'Unable to find entry point for {}'.format(argv[1])
@@ -138,8 +104,7 @@ class OpenStackSnap(object):
         LOG.debug(entry_point)
 
         # Build out command to run
-        cmd_type = entry_point.get('type',
-                                   DEFAULT_EP_TYPE)
+        cmd_type = entry_point.get('type', DEFAULT_EP_TYPE)
 
         if cmd_type not in VALID_EP_TYPES:
             _msg = 'Invalid entry point type: {}'.format(cmd_type)
@@ -149,7 +114,7 @@ class OpenStackSnap(object):
         if cmd_type == DEFAULT_EP_TYPE:
             cmd = [entry_point['binary']]
             for cfile in entry_point.get('config-files', []):
-                cfile = cfile.format(**self.snap_env)
+                cfile = cfile.format(**utils.snap_env)
                 if os.path.exists(cfile):
                     cmd.append('--config-file={}'.format(cfile))
                 else:
@@ -157,7 +122,7 @@ class OpenStackSnap(object):
                               ', skipping'.format(cfile))
 
             for cdir in entry_point.get('config-dirs', []):
-                cdir = cdir.format(**self.snap_env)
+                cdir = cdir.format(**utils.snap_env)
                 if os.path.exists(cdir):
                     cmd.append('--config-dir={}'.format(cdir))
                 else:
@@ -166,7 +131,7 @@ class OpenStackSnap(object):
 
             log_file = entry_point.get('log-file')
             if log_file:
-                log_file = log_file.format(**self.snap_env)
+                log_file = log_file.format(**utils.snap_env)
                 cmd.append('--log-file={}'.format(log_file))
 
             # Ensure any arguments passed to wrapper are propagated
@@ -178,12 +143,12 @@ class OpenStackSnap(object):
 
             uwsgi_dir = entry_point.get('uwsgi-dir')
             if uwsgi_dir:
-                uwsgi_dir = uwsgi_dir.format(**self.snap_env)
+                uwsgi_dir = uwsgi_dir.format(**utils.snap_env)
                 cmd.append(uwsgi_dir)
 
             log_file = entry_point.get('log-file')
             if log_file:
-                log_file = log_file.format(**self.snap_env)
+                log_file = log_file.format(**utils.snap_env)
                 cmd.extend(['--logto', log_file])
 
         LOG.debug('Executing command {}'.format(' '.join(cmd)))
