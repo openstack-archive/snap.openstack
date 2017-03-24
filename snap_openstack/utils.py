@@ -96,3 +96,42 @@ class SnapUtils(object):
                    '--no-create-home', '--ingroup', group, '--shell',
                    '/bin/false', user]
             subprocess.check_call(cmd)
+
+    def chown(self, path, user, group):
+        '''Change the owner of the specified file'''
+        LOG.debug('Changing owner of {} to {}:{}'.format(path, user, group))
+        uid = pwd.getpwnam(user).pw_uid
+        gid = grp.getgrnam(group).gr_gid
+        os.chown(path, uid, gid)
+
+    def chmod(self, path, mode):
+        '''Change the file mode bits of the specified file'''
+        LOG.debug('Changing file mode of {} to {}'.format(path, oct(mode)))
+        os.chmod(path, mode)
+
+    def rchown(self, root_dir, user, group):
+        '''Recursively change owner starting at the specified directory'''
+        self.chown(root_dir, user, group)
+        for dirpath, dirnames, filenames in os.walk(root_dir):
+            for d in dirnames:
+                self.chown(os.path.join(dirpath, d), user, group)
+            for f in filenames:
+                self.chown(os.path.join(dirpath, f), user, group)
+
+    def rchmod(self, root_dir, dir_mode, file_mode):
+        '''Recursively change mode bits starting at the specified directory'''
+        self.chmod(root_dir, dir_mode)
+        for dirpath, dirnames, filenames in os.walk(root_dir):
+            for d in dirnames:
+                self.chmod(os.path.join(dirpath, d), dir_mode)
+            for f in filenames:
+                self.chmod(os.path.join(dirpath, f), file_mode)
+
+    def drop_privileges(self, user, group):
+        '''Drop privileges to the specified user and group'''
+        uid = pwd.getpwnam(user).pw_uid
+        gid = grp.getgrnam(group).gr_gid
+        os.setgroups([])
+        LOG.debug('Dropping privileges to {}:{}'.format(user, group))
+        os.setgid(gid)
+        os.setuid(uid)
