@@ -92,22 +92,27 @@ class OpenStackSnap(object):
         renderer = SnapFileRenderer()
         LOG.debug(setup)
 
+        install = setup['install']
+        if install == 'classic':
+            root_dir = '/'
+        elif install == 'strict':
+            root_dir = '{snap_common}'
+        else:
+            _msg = 'Invalid install value: {}'.format(install)
+            LOG.error(_msg)
+            raise ValueError(_msg)
+
         for directory in setup['dirs']:
+            directory = os.path.join(root_dir, directory)
             dir_name = directory.format(**self.snap_env)
             LOG.debug('Ensuring directory {} exists'.format(dir_name))
             if not os.path.exists(dir_name):
                 LOG.debug('Creating directory {}'.format(dir_name))
                 os.makedirs(dir_name, 0o750)
 
-        for link_target in setup['symlinks']:
-            link = setup['symlinks'][link_target]
-            target = link_target.format(**self.snap_env)
-            if not os.path.exists(link):
-                LOG.debug('Creating symlink {} to {}'.format(link, target))
-                os.symlink(target, link)
-
         for template in setup['templates']:
             target = setup['templates'][template]
+            target = os.path.join(root_dir, target)
             target_file = target.format(**self.snap_env)
             ensure_dir(target_file)
             LOG.debug('Rendering {} to {}'.format(template, target_file))
@@ -115,9 +120,10 @@ class OpenStackSnap(object):
                 os.fchmod(tf.fileno(), 0o640)
                 tf.write(renderer.render(template, self.snap_env))
 
-        for source in setup['copyfiles']:
+        for source, target in setup['copyfiles'].items():
             source_dir = source.format(**self.snap_env)
-            dest_dir = setup['copyfiles'][source].format(**self.snap_env)
+            dest = os.path.join(root_dir, target)
+            dest_dir = dest.format(**self.snap_env)
             for source_name in os.listdir(source_dir):
                 s_file = os.path.join(source_dir, source_name)
                 d_file = os.path.join(dest_dir, source_name)
