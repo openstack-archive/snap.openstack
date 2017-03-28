@@ -40,12 +40,16 @@ SNAP_ENV = ['SNAP_NAME',
 
 DEFAULT_EP_TYPE = 'simple'
 UWSGI_EP_TYPE = 'uwsgi'
+NGINX_EP_TYPE = 'nginx'
 
-VALID_EP_TYPES = (DEFAULT_EP_TYPE, UWSGI_EP_TYPE)
+VALID_EP_TYPES = (DEFAULT_EP_TYPE, UWSGI_EP_TYPE, NGINX_EP_TYPE)
 
 DEFAULT_UWSGI_ARGS = ["--master",
                       "--die-on-term",
                       "--emperor"]
+
+DEFAULT_NGINX_ARGS = ["-g",
+                      "daemon on; master_process on;"]
 
 
 def snap_env():
@@ -191,6 +195,19 @@ class OpenStackSnap(object):
             if log_file:
                 log_file = log_file.format(**self.snap_env)
                 cmd.extend(['--logto', log_file])
+
+        elif cmd_type == NGINX_EP_TYPE:
+            cmd = [NGINX_EP_TYPE]
+            cmd.extend(DEFAULT_NGINX_ARGS)
+
+            cfile = entry_point.get('config-file')
+            if cfile:
+                cfile = cfile.format(**self.snap_env)
+                if os.path.exists(cfile):
+                    cmd.extend(['-c', '{}'.format(cfile)])
+                else:
+                    LOG.debug('Configuration file {} not found'
+                              ', skipping'.format(cfile))
 
         LOG.debug('Executing command {}'.format(' '.join(cmd)))
         os.execvp(cmd[0], cmd)
