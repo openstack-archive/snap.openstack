@@ -60,6 +60,7 @@ class OpenStackSnap(object):
         utils = SnapUtils()
         LOG.debug(setup)
 
+        utils.ensure_key('install', setup.keys())
         install = setup['install']
         if install == 'classic':
             root_dir = '/'
@@ -70,11 +71,28 @@ class OpenStackSnap(object):
             LOG.error(_msg)
             raise ValueError(_msg)
 
+        utils.ensure_key('users', setup.keys())
+        for user, groups in setup['users'].items():
+            home = os.path.join(root_dir, "/var/lib/", user)
+            utils.add_user(user, groups, home)
+
+        utils.ensure_key('default_owner', setup.keys())
+        default_user = setup['default_owner'].split(':')[0]
+        default_group = setup['default_owner'].split(':')[1]
+
+        utils.ensure_key('default_dir_mode', setup.keys())
+        default_dir_mode = setup['default_dir_mode']
+
+        utils.ensure_key('default_file_mode', setup.keys())
+        default_file_mode = setup['default_file_mode']
+
         if 'dirs' in setup.keys():
             for directory in setup['dirs']:
                 directory = os.path.join(root_dir, directory)
                 dir_name = directory.format(**utils.snap_env)
                 utils.ensure_dir(dir_name)
+                utils.rchmod(dir_name, default_dir_mode, default_file_mode)
+                utils.rchown(dir_name, default_user, default_group)
 
         if 'templates' in setup.keys():
             for template in setup['templates']:
@@ -84,8 +102,9 @@ class OpenStackSnap(object):
                 utils.ensure_dir(target_file, is_file=True)
                 LOG.debug('Rendering {} to {}'.format(template, target_file))
                 with open(target_file, 'w') as tf:
-                    os.fchmod(tf.fileno(), 0o640)
                     tf.write(renderer.render(template, utils.snap_env))
+                utils.chmod(target_file, default_file_mode)
+                utils.chown(target_file, default_user, default_group)
 
         if 'copyfiles' in setup.keys():
             for source, target in setup['copyfiles'].items():
@@ -99,6 +118,28 @@ class OpenStackSnap(object):
                         continue
                     LOG.debug('Copying file {} to {}'.format(s_file, d_file))
                     shutil.copy2(s_file, d_file)
+                    utils.chmod(d_file, default_file_mode)
+                    utils.chown(d_file, default_user, default_group)
+
+        if 'chmod' in setup.keys():
+            for target in setup['chmod']:
+                target_path = target.format(**utils.snap_env)
+                mode = setup['chmod'][target]
+                utils.chmod(target_path, mode)
+
+        if 'chown' in setup.keys():
+            for target in setup['chown']:
+                target_path = target.format(**utils.snap_env)
+                user = setup['chown'][target].split(':')[0]
+                group = setup['chown'][target].split(':')[1]
+                utils.chown(target_path, user, group)
+
+        if 'rchown' in setup.keys():
+            for target in setup['rchown']:
+                target_path = target.format(**utils.snap_env)
+                user = setup['rchown'][target].split(':')[0]
+                group = setup['rchown'][target].split(':')[1]
+                utils.rchown(target_path, user, group)
 
     def execute(self, argv):
         '''Execute snap command building out configuration and log options'''
@@ -109,6 +150,9 @@ class OpenStackSnap(object):
             _msg = 'Unable to find entry point for {}'.format(argv[1])
             LOG.error(_msg)
             raise ValueError(_msg)
+
+        utils.ensure_key('run_as', entry_point)
+        user, groups = list(entry_point['run_as'].items())[0]
 
         other_args = argv[2:]
         LOG.debug(entry_point)
@@ -173,6 +217,8 @@ class OpenStackSnap(object):
                 else:
                     LOG.debug('Configuration file {} not found'
                               ', skipping'.format(cfile))
+
+        utils.drop_privileges(user, groups)
 
         LOG.debug('Executing command {}'.format(' '.join(cmd)))
         os.execvp(cmd[0], cmd)
