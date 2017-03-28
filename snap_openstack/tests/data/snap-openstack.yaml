@@ -13,6 +13,8 @@ entry_points:
       - "/etc/nova/nova.conf"
     config-dirs:
       - "/etc/nova/conf.d"
+    run_as:
+      nova: [nova]
   nova-scheduler:
     type: simple
     binary: nova-scheduler
@@ -21,10 +23,16 @@ entry_points:
     config-dirs:
       - "/etc/nova/conf.d"
     log-file: "/var/log/nova/scheduler.log"
+    run_as:
+      nova: [nova]
   keystone-api:
     type: uwsgi
     uwsgi-dir: "/etc/uwsgi"
     log-file: "/var/log/uwsgi/keystone.log"
+    run_as:
+      keystone: [keystone]
   nova-broken:
     type: unknown
     binary: nova-broken
+    run_as:
+      nova: [nova]
