@@ -41,17 +41,20 @@ class TestOpenStackSnapExecute(test_base.TestCase):
     def mock_exists(cls, path):
         '''Test helper for os.path.exists'''
         paths = {
-            '/snap/common/etc/nova/nova.conf': True,
-            '/var/snap/test/common/etc/nova.conf.d': True,
+            '/etc/nova/nova.conf': True,
+            '/etc/nova/conf.d': True,
         }
         return paths.get(path, False)
 
-    @patch.object(base, 'snap_env')
+    def mock_snap_utils(self, mock_utils):
+        snap_utils = mock_utils.return_value
+        snap_utils.snap_env.return_value = MOCK_SNAP_ENV
+
+    @patch('snap_openstack.base.SnapUtils')
     @patch.object(base, 'os')
-    def test_base_snap_config(self, mock_os,
-                              mock_snap_env):
+    def test_base_snap_config(self, mock_os, mock_utils):
         '''Ensure wrapped binary called with full args list'''
-        mock_snap_env.return_value = MOCK_SNAP_ENV
+        self.mock_snap_utils(mock_utils)
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists
@@ -60,17 +63,16 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         mock_os.execvp.assert_called_with(
             'nova-scheduler',
             ['nova-scheduler',
-             '--config-file=/snap/common/etc/nova/nova.conf',
-             '--config-dir=/var/snap/test/common/etc/nova.conf.d',
-             '--log-file=/var/snap/test/common/logs/nova-scheduler.log']
+             '--config-file=/etc/nova/nova.conf',
+             '--config-dir=/etc/nova/conf.d',
+             '--log-file=/var/log/nova/scheduler.log']
         )
 
-    @patch.object(base, 'snap_env')
+    @patch('snap_openstack.base.SnapUtils')
     @patch.object(base, 'os')
-    def test_base_snap_config_no_logging(self, mock_os,
-                                         mock_snap_env):
+    def test_base_snap_config_no_logging(self, mock_os, mock_utils):
         '''Ensure wrapped binary called correctly with no logfile'''
-        mock_snap_env.return_value = MOCK_SNAP_ENV
+        self.mock_snap_utils(mock_utils)
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists
@@ -80,17 +82,16 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         mock_os.execvp.assert_called_with(
             'nova-manage',
             ['nova-manage',
-             '--config-file=/snap/common/etc/nova/nova.conf',
-             '--config-dir=/var/snap/test/common/etc/nova.conf.d',
+             '--config-file=/etc/nova/nova.conf',
+             '--config-dir=/etc/nova/conf.d',
              'db', 'sync']
         )
 
-    @patch.object(base, 'snap_env')
+    @patch('snap_openstack.base.SnapUtils')
     @patch.object(base, 'os')
-    def test_base_snap_config_missing_entry_point(self, mock_os,
-                                                  mock_snap_env):
+    def test_base_snap_config_missing_entry_point(self, mock_os, mock_utils):
         '''Ensure ValueError raised for missing entry_point'''
-        mock_snap_env.return_value = MOCK_SNAP_ENV
+        self.mock_snap_utils(mock_utils)
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists
@@ -99,12 +100,11 @@ class TestOpenStackSnapExecute(test_base.TestCase):
                           ['snap-openstack',
                            'nova-api'])
 
-    @patch.object(base, 'snap_env')
+    @patch('snap_openstack.base.SnapUtils')
     @patch.object(base, 'os')
-    def test_base_snap_config_uwsgi(self, mock_os,
-                                    mock_snap_env):
+    def test_base_snap_config_uwsgi(self, mock_os, mock_utils):
         '''Ensure wrapped binary of uwsgi called with correct arguments'''
-        mock_snap_env.return_value = MOCK_SNAP_ENV
+        self.mock_snap_utils(mock_utils)
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists
@@ -114,16 +114,15 @@ class TestOpenStackSnapExecute(test_base.TestCase):
             'uwsgi',
             ['uwsgi', '--master',
              '--die-on-term', '--emperor',
-             '/var/snap/test/common/etc/uwsgi',
-             '--logto', '/var/snap/test/common/logs/keystone.log']
+             '/etc/uwsgi',
+             '--logto', '/var/log/uwsgi/keystone.log']
         )
 
-    @patch.object(base, 'snap_env')
+    @patch('snap_openstack.base.SnapUtils')
     @patch.object(base, 'os')
-    def test_base_snap_config_invalid_ep_type(self, mock_os,
-                                              mock_snap_env):
+    def test_base_snap_config_invalid_ep_type(self, mock_os, mock_utils):
         '''Ensure endpoint types are correctly validated'''
-        mock_snap_env.return_value = MOCK_SNAP_ENV
+        self.mock_snap_utils(mock_utils)
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists
