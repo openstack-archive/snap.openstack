@@ -122,7 +122,7 @@ class OpenStackSnap(object):
             raise ValueError(_msg)
 
         if cmd_type == DEFAULT_EP_TYPE:
-            cmd = [entry_point['binary']]
+            cmd = [entry_point['binary'].format(**utils.snap_env)]
             for cfile in entry_point.get('config-files', []):
                 cfile = cfile.format(**utils.snap_env)
                 if os.path.exists(cfile):
