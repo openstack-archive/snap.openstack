@@ -21,10 +21,13 @@ entry_points:
     config-dirs:
       - "/etc/nova/conf.d"
     log-file: "/var/log/nova/scheduler.log"
-  keystone-api:
+  keystone-uwsgi:
     type: uwsgi
     uwsgi-dir: "/etc/uwsgi"
     log-file: "/var/log/uwsgi/keystone.log"
+  keystone-nginx:
+    type: nginx
+    config-file: "/etc/nginx/keystone/nginx.conf"
   nova-broken:
     type: unknown
     binary: nova-broken

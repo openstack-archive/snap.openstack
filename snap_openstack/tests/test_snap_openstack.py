@@ -48,7 +48,7 @@ class TestOpenStackSnapExecute(test_base.TestCase):
 
     def mock_snap_utils(self, mock_utils):
         snap_utils = mock_utils.return_value
-        snap_utils.snap_env.return_value = MOCK_SNAP_ENV
+        snap_utils.snap_env = MOCK_SNAP_ENV
 
     @patch('snap_openstack.base.SnapUtils')
     @patch.object(base, 'os')
@@ -109,13 +109,29 @@ class TestOpenStackSnapExecute(test_base.TestCase):
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists
         snap.execute(['snap-openstack',
-                      'keystone-api'])
+                      'keystone-uwsgi'])
         mock_os.execvp.assert_called_with(
-            'uwsgi',
-            ['uwsgi', '--master',
+            '/snap/common/bin/uwsgi',
+            ['/snap/common/bin/uwsgi', '--master',
              '--die-on-term', '--emperor',
              '/etc/uwsgi',
              '--logto', '/var/log/uwsgi/keystone.log']
+        )
+
+    @patch('snap_openstack.base.SnapUtils')
+    @patch.object(base, 'os')
+    def test_base_snap_config_nginx(self, mock_os, mock_utils):
+        '''Ensure wrapped binary of nginx called with correct arguments'''
+        self.mock_snap_utils(mock_utils)
+        snap = base.OpenStackSnap(os.path.join(TEST_DIR,
+                                               'snap-openstack.yaml'))
+        mock_os.path.exists.side_effect = self.mock_exists
+        snap.execute(['snap-openstack',
+                      'keystone-nginx'])
+        mock_os.execvp.assert_called_with(
+            '/snap/common/usr/sbin/nginx',
+            ['/snap/common/usr/sbin/nginx', '-g',
+             'daemon on; master_process on;']
         )
 
     @patch('snap_openstack.base.SnapUtils')
