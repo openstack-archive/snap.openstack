@@ -148,7 +148,7 @@ class OpenStackSnap(object):
             cmd.extend(other_args)
 
         elif cmd_type == UWSGI_EP_TYPE:
-            cmd = [UWSGI_EP_TYPE]
+            cmd = ["{snap}/bin/uwsgi".format(**utils.snap_env)]
             cmd.extend(DEFAULT_UWSGI_ARGS)
 
             uwsgi_dir = entry_point.get('uwsgi-dir')
@@ -162,7 +162,7 @@ class OpenStackSnap(object):
                 cmd.extend(['--logto', log_file])
 
         elif cmd_type == NGINX_EP_TYPE:
-            cmd = [NGINX_EP_TYPE]
+            cmd = ["{snap}/usr/sbin/nginx".format(**utils.snap_env)]
             cmd.extend(DEFAULT_NGINX_ARGS)
 
             cfile = entry_point.get('config-file')
