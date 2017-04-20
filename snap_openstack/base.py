@@ -35,6 +35,7 @@ VALID_EP_TYPES = (DEFAULT_EP_TYPE, UWSGI_EP_TYPE, NGINX_EP_TYPE)
 
 DEFAULT_UWSGI_ARGS = ["--master",
                       "--die-on-term",
+                      "-H", "{snap}/usr",
                       "--emperor"]
 
 DEFAULT_NGINX_ARGS = ["-g",
@@ -149,7 +150,8 @@ class OpenStackSnap(object):
 
         elif cmd_type == UWSGI_EP_TYPE:
             cmd = ["{snap}/bin/uwsgi".format(**utils.snap_env)]
-            cmd.extend(DEFAULT_UWSGI_ARGS)
+            defaults = [d.format(**utils.snap_env) for d in DEFAULT_UWSGI_ARGS]
+            cmd.extend(defaults)
 
             uwsgi_dir = entry_point.get('uwsgi-dir')
             if uwsgi_dir:
