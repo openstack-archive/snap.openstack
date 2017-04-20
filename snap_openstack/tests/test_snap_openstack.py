@@ -113,8 +113,8 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         mock_os.execvp.assert_called_with(
             '/snap/common/bin/uwsgi',
             ['/snap/common/bin/uwsgi', '--master',
-             '--die-on-term', '--emperor',
-             '/etc/uwsgi',
+             '--die-on-term', '-H', '/snap/common/usr',
+             '--emperor', '/etc/uwsgi',
              '--logto', '/var/log/uwsgi/keystone.log']
         )
 
