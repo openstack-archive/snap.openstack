@@ -61,26 +61,14 @@ class OpenStackSnap(object):
         utils = SnapUtils()
         LOG.debug(setup)
 
-        install = setup['install']
-        if install == 'classic':
-            root_dir = '/'
-        elif install == 'strict':
-            root_dir = '{snap_common}'
-        else:
-            _msg = 'Invalid install value: {}'.format(install)
-            LOG.error(_msg)
-            raise ValueError(_msg)
-
         if 'dirs' in setup.keys():
             for directory in setup['dirs']:
-                directory = os.path.join(root_dir, directory)
                 dir_name = directory.format(**utils.snap_env)
                 utils.ensure_dir(dir_name)
 
         if 'templates' in setup.keys():
             for template in setup['templates']:
                 target = setup['templates'][template]
-                target = os.path.join(root_dir, target)
                 target_file = target.format(**utils.snap_env)
                 utils.ensure_dir(target_file, is_file=True)
                 LOG.debug('Rendering {} to {}'.format(template, target_file))
@@ -91,8 +79,7 @@ class OpenStackSnap(object):
         if 'copyfiles' in setup.keys():
             for source, target in setup['copyfiles'].items():
                 source_dir = source.format(**utils.snap_env)
-                dest = os.path.join(root_dir, target)
-                dest_dir = dest.format(**utils.snap_env)
+                dest_dir = target.format(**utils.snap_env)
                 for source_name in os.listdir(source_dir):
                     s_file = os.path.join(source_dir, source_name)
                     d_file = os.path.join(dest_dir, source_name)
