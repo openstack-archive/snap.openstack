@@ -71,10 +71,12 @@ class OpenStackSnap(object):
                 target = setup['templates'][template]
                 target_file = target.format(**utils.snap_env)
                 utils.ensure_dir(target_file, is_file=True)
-                LOG.debug('Rendering {} to {}'.format(template, target_file))
-                with open(target_file, 'w') as tf:
-                    os.fchmod(tf.fileno(), 0o640)
-                    tf.write(renderer.render(template, utils.snap_env))
+                if not os.path.isfile(target_file):
+                    LOG.debug('Rendering {} to {}'.format(template,
+                                                          target_file))
+                    with open(target_file, 'w') as tf:
+                        os.fchmod(tf.fileno(), 0o640)
+                        tf.write(renderer.render(template, utils.snap_env))
 
         if 'copyfiles' in setup.keys():
             for source, target in setup['copyfiles'].items():
