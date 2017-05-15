@@ -41,6 +41,10 @@ DEFAULT_UWSGI_ARGS = ["--master",
 DEFAULT_NGINX_ARGS = ["-g",
                       "daemon on; master_process on;"]
 
+DEFAULT_OWNER = "root:root"
+DEFAULT_DIR_MODE = 0o750
+DEFAULT_FILE_MODE = 0o640
+
 
 class OpenStackSnap(object):
     '''Main executor class for snap-openstack'''
@@ -61,10 +65,23 @@ class OpenStackSnap(object):
         utils = SnapUtils()
         LOG.debug(setup)
 
+        if 'users' in setup.keys():
+            for user, groups in setup['users'].items():
+                home = os.path.join("{snap_common}".format(**utils.snap_env),
+                                    "lib", user)
+                utils.add_user(user, groups, home)
+
+        default_owner = setup.get('default-owner', DEFAULT_OWNER)
+        default_user, default_group = default_owner.split(':')
+        default_dir_mode = setup.get('default-dir-mode', DEFAULT_DIR_MODE)
+        default_file_mode = setup.get('default-file-mode', DEFAULT_FILE_MODE)
+
         if 'dirs' in setup.keys():
             for directory in setup['dirs']:
                 dir_name = directory.format(**utils.snap_env)
-                utils.ensure_dir(dir_name)
+                utils.ensure_dir(dir_name, perms=default_dir_mode)
+                utils.rchmod(dir_name, default_dir_mode, default_file_mode)
+                utils.rchown(dir_name, default_user, default_group)
 
         if 'templates' in setup.keys():
             for template in setup['templates']:
@@ -75,8 +92,9 @@ class OpenStackSnap(object):
                     LOG.debug('Rendering {} to {}'.format(template,
                                                           target_file))
                     with open(target_file, 'w') as tf:
-                        os.fchmod(tf.fileno(), 0o640)
                         tf.write(renderer.render(template, utils.snap_env))
+                    utils.chmod(target_file, default_file_mode)
+                    utils.chown(target_file, default_user, default_group)
 
         if 'copyfiles' in setup.keys():
             for source, target in setup['copyfiles'].items():
@@ -89,6 +107,34 @@ class OpenStackSnap(object):
                         continue
                     LOG.debug('Copying file {} to {}'.format(s_file, d_file))
                     shutil.copy2(s_file, d_file)
+                    utils.chmod(d_file, default_file_mode)
+                    utils.chown(d_file, default_user, default_group)
+
+        if 'rchown' in setup.keys():
+            for target in setup['rchown']:
+                target_path = target.format(**utils.snap_env)
+                user = setup['rchown'][target].split(':')[0]
+                group = setup['rchown'][target].split(':')[1]
+                utils.rchown(target_path, user, group)
+
+        if 'chmod' in setup.keys():
+            for target in setup['chmod']:
+                target_path = target.format(**utils.snap_env)
+                if os.path.exists(target_path):
+                    mode = setup['chmod'][target]
+                    utils.chmod(target_path, mode)
+                else:
+                    LOG.debug('Path not found: {}'.format(target_path))
+
+        if 'chown' in setup.keys():
+            for target in setup['chown']:
+                target_path = target.format(**utils.snap_env)
+                if os.path.exists(target_path):
+                    user = setup['chown'][target].split(':')[0]
+                    group = setup['chown'][target].split(':')[1]
+                    utils.chown(target_path, user, group)
+                else:
+                    LOG.debug('Path not found: {}'.format(target_path))
 
     def execute(self, argv):
         '''Execute snap command building out configuration and log options'''
@@ -164,6 +210,10 @@ class OpenStackSnap(object):
                 else:
                     LOG.debug('Configuration file {} not found'
                               ', skipping'.format(cfile))
+
+        if 'run-as' in entry_point.keys():
+            user, groups = list(entry_point['run-as'].items())[0]
+            utils.drop_privileges(user, groups)
 
         LOG.debug('Executing command {}'.format(' '.join(cmd)))
         os.execvp(cmd[0], cmd)

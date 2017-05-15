@@ -49,6 +49,7 @@ class TestOpenStackSnapExecute(test_base.TestCase):
     def mock_snap_utils(self, mock_utils):
         snap_utils = mock_utils.return_value
         snap_utils.snap_env = MOCK_SNAP_ENV
+        snap_utils.drop_privileges.return_value = None
 
     @patch('snap_openstack.base.SnapUtils')
     @patch.object(base, 'os')
