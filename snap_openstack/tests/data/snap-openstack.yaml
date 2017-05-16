@@ -24,7 +24,14 @@ entry_points:
   keystone-uwsgi:
     type: uwsgi
     uwsgi-dir: "/etc/uwsgi"
-    log-file: "/var/log/uwsgi/keystone.log"
+    uwsgi-log: "/var/log/uwsgi/keystone.log"
+    config-files:
+      - "/etc/keystone/keystone.conf"
+    config-dirs:
+      - "/etc/keystone/conf.d"
+    log-file: "/var/log/keystone/keystone.log"
+    templates:
+      "admin.ini.j2": "/etc/uwsgi/admin.ini"
   keystone-nginx:
     type: nginx
     config-file: "/etc/nginx/keystone/nginx.conf"

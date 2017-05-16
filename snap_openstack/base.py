@@ -92,6 +92,7 @@ class OpenStackSnap(object):
 
     def execute(self, argv):
         '''Execute snap command building out configuration and log options'''
+        renderer = SnapFileRenderer()
         utils = SnapUtils()
 
         entry_point = self.configuration['entry_points'].get(argv[1])
@@ -141,16 +142,56 @@ class OpenStackSnap(object):
             cmd = ["{snap}/bin/uwsgi".format(**utils.snap_env)]
             defaults = [d.format(**utils.snap_env) for d in DEFAULT_UWSGI_ARGS]
             cmd.extend(defaults)
+            pyargv = []
 
             uwsgi_dir = entry_point.get('uwsgi-dir')
             if uwsgi_dir:
                 uwsgi_dir = uwsgi_dir.format(**utils.snap_env)
                 cmd.append(uwsgi_dir)
 
+            uwsgi_log = entry_point.get('uwsgi-log')
+            if uwsgi_log:
+                uwsgi_log = uwsgi_log.format(**utils.snap_env)
+                cmd.extend(['--logto', uwsgi_log])
+
+            for cfile in entry_point.get('config-files', []):
+                cfile = cfile.format(**utils.snap_env)
+                if os.path.exists(cfile):
+                    pyargv.append('--config-file={}'.format(cfile))
+                else:
+                    LOG.debug('Configuration file {} not found'
+                              ', skipping'.format(cfile))
+
+            for cdir in entry_point.get('config-dirs', []):
+                cdir = cdir.format(**utils.snap_env)
+                if os.path.exists(cdir):
+                    pyargv.append('--config-dir={}'.format(cdir))
+                else:
+                    LOG.debug('Configuration directory {} not found'
+                              ', skipping'.format(cdir))
+
             log_file = entry_point.get('log-file')
             if log_file:
                 log_file = log_file.format(**utils.snap_env)
-                cmd.extend(['--logto', log_file])
+
+                pyargv.append('--log-file={}'.format(log_file))
+
+            # NOTE(jamespage): Pass dynamically built pyargv into
+            #                  context for template generation.
+            snap_env = utils.snap_env
+            if pyargv:
+                snap_env['pyargv'] = ' '.join(pyargv)
+
+            for template in entry_point.get('templates', []):
+                target = entry_point['templates'][template]
+                target_file = target.format(**utils.snap_env)
+                utils.ensure_dir(target_file, is_file=True)
+                if not os.path.isfile(target_file):
+                    LOG.debug('Rendering {} to {}'.format(template,
+                                                          target_file))
+                    with open(target_file, 'w') as tf:
+                        os.fchmod(tf.fileno(), 0o640)
+                        tf.write(renderer.render(template, snap_env))
 
         elif cmd_type == NGINX_EP_TYPE:
             cmd = ["{snap}/usr/sbin/nginx".format(**utils.snap_env)]

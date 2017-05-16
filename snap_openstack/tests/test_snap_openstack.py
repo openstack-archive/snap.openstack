@@ -50,9 +50,11 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         snap_utils = mock_utils.return_value
         snap_utils.snap_env = MOCK_SNAP_ENV
 
+    @patch.object(base, 'SnapFileRenderer')
     @patch('snap_openstack.base.SnapUtils')
     @patch.object(base, 'os')
-    def test_base_snap_config(self, mock_os, mock_utils):
+    def test_base_snap_config(self, mock_os, mock_utils,
+                              mock_renderer):
         '''Ensure wrapped binary called with full args list'''
         self.mock_snap_utils(mock_utils)
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
@@ -68,9 +70,11 @@ class TestOpenStackSnapExecute(test_base.TestCase):
              '--log-file=/var/log/nova/scheduler.log']
         )
 
+    @patch.object(base, 'SnapFileRenderer')
     @patch('snap_openstack.base.SnapUtils')
     @patch.object(base, 'os')
-    def test_base_snap_config_no_logging(self, mock_os, mock_utils):
+    def test_base_snap_config_no_logging(self, mock_os, mock_utils,
+                                         mock_renderer):
         '''Ensure wrapped binary called correctly with no logfile'''
         self.mock_snap_utils(mock_utils)
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
@@ -87,9 +91,11 @@ class TestOpenStackSnapExecute(test_base.TestCase):
              'db', 'sync']
         )
 
+    @patch.object(base, 'SnapFileRenderer')
     @patch('snap_openstack.base.SnapUtils')
     @patch.object(base, 'os')
-    def test_base_snap_config_missing_entry_point(self, mock_os, mock_utils):
+    def test_base_snap_config_missing_entry_point(self, mock_os, mock_utils,
+                                                  mock_renderer):
         '''Ensure ValueError raised for missing entry_point'''
         self.mock_snap_utils(mock_utils)
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
@@ -100,9 +106,11 @@ class TestOpenStackSnapExecute(test_base.TestCase):
                           ['snap-openstack',
                            'nova-api'])
 
+    @patch.object(base, 'SnapFileRenderer')
     @patch('snap_openstack.base.SnapUtils')
     @patch.object(base, 'os')
-    def test_base_snap_config_uwsgi(self, mock_os, mock_utils):
+    def test_base_snap_config_uwsgi(self, mock_os, mock_utils,
+                                    mock_renderer):
         '''Ensure wrapped binary of uwsgi called with correct arguments'''
         self.mock_snap_utils(mock_utils)
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
@@ -118,9 +126,11 @@ class TestOpenStackSnapExecute(test_base.TestCase):
              '--logto', '/var/log/uwsgi/keystone.log']
         )
 
+    @patch.object(base, 'SnapFileRenderer')
     @patch('snap_openstack.base.SnapUtils')
     @patch.object(base, 'os')
-    def test_base_snap_config_nginx(self, mock_os, mock_utils):
+    def test_base_snap_config_nginx(self, mock_os, mock_utils,
+                                    mock_renderer):
         '''Ensure wrapped binary of nginx called with correct arguments'''
         self.mock_snap_utils(mock_utils)
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
@@ -134,9 +144,11 @@ class TestOpenStackSnapExecute(test_base.TestCase):
              'daemon on; master_process on;']
         )
 
+    @patch.object(base, 'SnapFileRenderer')
     @patch('snap_openstack.base.SnapUtils')
     @patch.object(base, 'os')
-    def test_base_snap_config_invalid_ep_type(self, mock_os, mock_utils):
+    def test_base_snap_config_invalid_ep_type(self, mock_os, mock_utils,
+                                              mock_renderer):
         '''Ensure endpoint types are correctly validated'''
         self.mock_snap_utils(mock_utils)
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
