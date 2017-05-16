@@ -28,7 +28,12 @@ entry_points:
   keystone-uwsgi:
     type: uwsgi
     uwsgi-dir: "/etc/uwsgi"
-    log-file: "/var/log/uwsgi/keystone.log"
+    uwsgi-log: "/var/log/uwsgi/keystone.log"
+    config-files:
+      - "/etc/keystone/keystone.conf"
+    config-dirs:
+      - "/etc/keystone/conf.d"
+    log-file: "/var/log/keystone/keystone.log"
     run_as:
       keystone: [keystone]
   keystone-nginx:
