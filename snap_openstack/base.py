@@ -58,9 +58,9 @@ class OpenStackSnap(object):
 
         Run this method prior to use of the execute method.
         '''
-        setup = self.configuration['setup']
         renderer = SnapFileRenderer()
         utils = SnapUtils()
+        setup = self.configuration['setup']
         LOG.debug(setup)
         lock_file = "{snap_data}/snap-openstack".format(**utils.snap_env)
 
@@ -138,6 +138,7 @@ class OpenStackSnap(object):
         '''Execute snap command building out configuration and log options'''
         renderer = SnapFileRenderer()
         utils = SnapUtils()
+        setup = self.configuration['setup']
 
         entry_point = self.configuration['entry_points'].get(argv[1])
         if not entry_point:
@@ -225,16 +226,22 @@ class OpenStackSnap(object):
             snap_env = utils.snap_env
             if pyargv:
                 snap_env['pyargv'] = ' '.join(pyargv)
+                LOG.debug('Setting pyargv to: {}'.format(' '.join(pyargv)))
 
-            for template in entry_point.get('templates', []):
-                target = entry_point['templates'][template]
+            default_owner = setup.get('default-owner', DEFAULT_OWNER)
+            default_user, default_group = default_owner.split(':')
+            default_file_mode = setup.get('default-file-mode',
+                                          DEFAULT_FILE_MODE)
+            for template in setup.get('templates', []):
+                target = setup['templates'][template]
                 target_file = target.format(**utils.snap_env)
                 utils.ensure_dir(target_file, is_file=True)
                 LOG.debug('Rendering {} to {}'.format(template,
                                                       target_file))
                 with open(target_file, 'w') as tf:
-                    os.fchmod(tf.fileno(), 0o640)
-                    tf.write(renderer.render(template, snap_env))
+                    tf.write(renderer.render(template, utils.snap_env))
+                utils.chmod(target_file, default_file_mode)
+                utils.chown(target_file, default_user, default_group)
 
         elif cmd_type == NGINX_EP_TYPE:
             cmd = ["{snap}/usr/sbin/nginx".format(**utils.snap_env)]
