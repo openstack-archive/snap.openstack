@@ -86,13 +86,12 @@ class OpenStackSnap(object):
             target = setup['templates'][template]
             target_file = target.format(**utils.snap_env)
             utils.ensure_dir(target_file, is_file=True)
-            if not os.path.isfile(target_file):
-                LOG.debug('Rendering {} to {}'.format(template,
-                                                      target_file))
-                with open(target_file, 'w') as tf:
-                    tf.write(renderer.render(template, utils.snap_env))
-                utils.chmod(target_file, default_file_mode)
-                utils.chown(target_file, default_user, default_group)
+            LOG.debug('Rendering {} to {}'.format(template,
+                                                  target_file))
+            with open(target_file, 'w') as tf:
+                tf.write(renderer.render(template, utils.snap_env))
+            utils.chmod(target_file, default_file_mode)
+            utils.chown(target_file, default_user, default_group)
 
         if 'copyfiles' in setup.keys():
             for source, target in setup['copyfiles'].items():
@@ -101,7 +100,7 @@ class OpenStackSnap(object):
                 for source_name in os.listdir(source_dir):
                     s_file = os.path.join(source_dir, source_name)
                     d_file = os.path.join(dest_dir, source_name)
-                    if not os.path.isfile(s_file) or os.path.exists(d_file):
+                    if not os.path.isfile(s_file):
                         continue
                     LOG.debug('Copying file {} to {}'.format(s_file, d_file))
                     shutil.copy2(s_file, d_file)
@@ -225,12 +224,11 @@ class OpenStackSnap(object):
                 target = entry_point['templates'][template]
                 target_file = target.format(**utils.snap_env)
                 utils.ensure_dir(target_file, is_file=True)
-                if not os.path.isfile(target_file):
-                    LOG.debug('Rendering {} to {}'.format(template,
-                                                          target_file))
-                    with open(target_file, 'w') as tf:
-                        os.fchmod(tf.fileno(), 0o640)
-                        tf.write(renderer.render(template, snap_env))
+                LOG.debug('Rendering {} to {}'.format(template,
+                                                      target_file))
+                with open(target_file, 'w') as tf:
+                    os.fchmod(tf.fileno(), 0o640)
+                    tf.write(renderer.render(template, snap_env))
 
         elif cmd_type == NGINX_EP_TYPE:
             cmd = ["{snap}/usr/sbin/nginx".format(**utils.snap_env)]
