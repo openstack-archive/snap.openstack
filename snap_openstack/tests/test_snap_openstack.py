@@ -21,6 +21,7 @@ Tests for `snap_openstack` module.
 
 import os
 
+from mock import mock_open
 from mock import patch
 
 from snap_openstack import base
@@ -117,8 +118,9 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists
-        snap.execute(['snap-openstack',
-                      'keystone-uwsgi'])
+        with patch('__builtin__.open', mock_open(), create=True):
+            snap.execute(['snap-openstack',
+                          'keystone-uwsgi'])
         mock_os.execvp.assert_called_with(
             '/snap/common/bin/uwsgi',
             ['/snap/common/bin/uwsgi', '--master',
