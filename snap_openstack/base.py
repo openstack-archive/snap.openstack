@@ -53,8 +53,6 @@ class OpenStackSnap(object):
         with open(config_file, 'r') as config:
             self.configuration = yaml.load(config)
 
-    @lockutils.synchronized('setup.lock', external=True,
-                            lock_path="/var/lock/snap-openstack")
     def setup(self):
         '''Perform any pre-execution snap setup
 
@@ -64,69 +62,77 @@ class OpenStackSnap(object):
         renderer = SnapFileRenderer()
         utils = SnapUtils()
         LOG.debug(setup)
+        lock_file = "{snap_data}/snap-openstack".format(**utils.snap_env)
 
-        if 'users' in setup.keys():
-            for user, groups in setup['users'].items():
-                home = os.path.join("{snap_common}".format(**utils.snap_env),
-                                    "lib", user)
-                utils.add_user(user, groups, home)
+        with lockutils.lock('setup.lock', external=True,
+                            lock_path=lock_file):
+            if 'users' in setup.keys():
+                for user, groups in setup['users'].items():
+                    home = os.path.join(
+                        "{snap_common}".format(**utils.snap_env),
+                        "lib", user
+                    )
+                    utils.add_user(user, groups, home)
 
-        default_owner = setup.get('default-owner', DEFAULT_OWNER)
-        default_user, default_group = default_owner.split(':')
-        default_dir_mode = setup.get('default-dir-mode', DEFAULT_DIR_MODE)
-        default_file_mode = setup.get('default-file-mode', DEFAULT_FILE_MODE)
+            default_owner = setup.get('default-owner', DEFAULT_OWNER)
+            default_user, default_group = default_owner.split(':')
+            default_dir_mode = setup.get('default-dir-mode',
+                                         DEFAULT_DIR_MODE)
+            default_file_mode = setup.get('default-file-mode',
+                                          DEFAULT_FILE_MODE)
 
-        for directory in setup.get('dirs', []):
-            dir_name = directory.format(**utils.snap_env)
-            utils.ensure_dir(dir_name, perms=default_dir_mode)
-            utils.rchmod(dir_name, default_dir_mode, default_file_mode)
-            utils.rchown(dir_name, default_user, default_group)
+            for directory in setup.get('dirs', []):
+                dir_name = directory.format(**utils.snap_env)
+                utils.ensure_dir(dir_name, perms=default_dir_mode)
+                utils.rchmod(dir_name, default_dir_mode, default_file_mode)
+                utils.rchown(dir_name, default_user, default_group)
 
-        if 'copyfiles' in setup.keys():
-            for source, target in setup['copyfiles'].items():
-                source_dir = source.format(**utils.snap_env)
-                dest_dir = target.format(**utils.snap_env)
-                for source_name in os.listdir(source_dir):
-                    s_file = os.path.join(source_dir, source_name)
-                    d_file = os.path.join(dest_dir, source_name)
-                    if not os.path.isfile(s_file):
-                        continue
-                    LOG.debug('Copying file {} to {}'.format(s_file, d_file))
-                    shutil.copy2(s_file, d_file)
-                    utils.chmod(d_file, default_file_mode)
-                    utils.chown(d_file, default_user, default_group)
+            if 'copyfiles' in setup.keys():
+                for source, target in setup['copyfiles'].items():
+                    source_dir = source.format(**utils.snap_env)
+                    dest_dir = target.format(**utils.snap_env)
+                    for source_name in os.listdir(source_dir):
+                        s_file = os.path.join(source_dir, source_name)
+                        d_file = os.path.join(dest_dir, source_name)
+                        if not os.path.isfile(s_file):
+                            continue
+                        LOG.debug('Copying file {} to {}'.format(s_file,
+                                                                 d_file))
+                        shutil.copy2(s_file, d_file)
+                        utils.chmod(d_file, default_file_mode)
+                        utils.chown(d_file, default_user, default_group)
 
-        for template in setup.get('templates', []):
-            target = setup['templates'][template]
-            target_file = target.format(**utils.snap_env)
-            utils.ensure_dir(target_file, is_file=True)
-            LOG.debug('Rendering {} to {}'.format(template,
-                                                  target_file))
-            with open(target_file, 'w') as tf:
-                tf.write(renderer.render(template, utils.snap_env))
-            utils.chmod(target_file, default_file_mode)
-            utils.chown(target_file, default_user, default_group)
+            for template in setup.get('templates', []):
+                target = setup['templates'][template]
+                target_file = target.format(**utils.snap_env)
+                utils.ensure_dir(target_file, is_file=True)
+                LOG.debug('Rendering {} to {}'.format(template,
+                                                      target_file))
+                with open(target_file, 'w') as tf:
+                    tf.write(renderer.render(template, utils.snap_env))
+                utils.chmod(target_file, default_file_mode)
+                utils.chown(target_file, default_user, default_group)
 
-        for target in setup.get('rchown', []):
-            target_path = target.format(**utils.snap_env)
-            user, group = setup['rchown'][target].split(':')
-            utils.rchown(target_path, user, group)
+            for target in setup.get('rchown', []):
+                target_path = target.format(**utils.snap_env)
+                user, group = setup['rchown'][target].split(':')
+                utils.rchown(target_path, user, group)
 
-        for target in setup.get('chmod', []):
-            target_path = target.format(**utils.snap_env)
-            if os.path.exists(target_path):
-                mode = setup['chmod'][target]
-                utils.chmod(target_path, mode)
-            else:
-                LOG.debug('Path not found: {}'.format(target_path))
+            for target in setup.get('chmod', []):
+                target_path = target.format(**utils.snap_env)
+                if os.path.exists(target_path):
+                    mode = setup['chmod'][target]
+                    utils.chmod(target_path, mode)
+                else:
+                    LOG.debug('Path not found: {}'.format(target_path))
 
-        for target in setup.get('chown', []):
-            target_path = target.format(**utils.snap_env)
-            if os.path.exists(target_path):
-                user, group = setup['chown'][target].split(':')
-                utils.chown(target_path, user, group)
-            else:
-                LOG.debug('Path not found: {}'.format(target_path))
+            for target in setup.get('chown', []):
+                target_path = target.format(**utils.snap_env)
+                if os.path.exists(target_path):
+                    user, group = setup['chown'][target].split(':')
+                    utils.chown(target_path, user, group)
+                else:
+                    LOG.debug('Path not found: {}'.format(target_path))
 
     def execute(self, argv):
         '''Execute snap command building out configuration and log options'''
