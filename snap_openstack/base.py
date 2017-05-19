@@ -46,6 +46,35 @@ DEFAULT_DIR_MODE = 0o750
 DEFAULT_FILE_MODE = 0o640
 
 
+def _render_templates(templates, snap_env, file_mode, user, group):
+    '''Render file templates using snap environment variables
+
+    Render provided dictionary of templates using snap_env,
+    ensuring that the rendered files have the required ownership
+    and permissions.
+
+    @templates: dict of key value pairs mapping template -> target
+    @snap_env: dict of environment variables to use for rendering
+    @file_mode: mode to create any files (provided as hex)
+    @user: user ownership for files
+    @group: group ownership for files
+    '''
+
+    renderer = SnapFileRenderer()
+    utils = SnapUtils()
+
+    for template in templates:
+        target = templates[template]
+        target_file = target.format(**snap_env)
+        utils.ensure_dir(target_file, is_file=True)
+        LOG.debug('Rendering {} to {}'.format(template,
+                                              target_file))
+        with open(target_file, 'w') as tf:
+            tf.write(renderer.render(template, snap_env))
+        utils.chmod(target_file, file_mode)
+        utils.chown(target_file, user, group)
+
+
 class OpenStackSnap(object):
     '''Main executor class for snap-openstack'''
 
@@ -58,7 +87,6 @@ class OpenStackSnap(object):
 
         Run this method prior to use of the execute method.
         '''
-        renderer = SnapFileRenderer()
         utils = SnapUtils()
         setup = self.configuration['setup']
         LOG.debug(setup)
@@ -102,16 +130,8 @@ class OpenStackSnap(object):
                         utils.chmod(d_file, default_file_mode)
                         utils.chown(d_file, default_user, default_group)
 
-            for template in setup.get('templates', []):
-                target = setup['templates'][template]
-                target_file = target.format(**utils.snap_env)
-                utils.ensure_dir(target_file, is_file=True)
-                LOG.debug('Rendering {} to {}'.format(template,
-                                                      target_file))
-                with open(target_file, 'w') as tf:
-                    tf.write(renderer.render(template, utils.snap_env))
-                utils.chmod(target_file, default_file_mode)
-                utils.chown(target_file, default_user, default_group)
+            _render_templates(setup.get('templates', []), utils.snap_env,
+                              default_file_mode, default_user, default_group)
 
             for target in setup.get('rchown', []):
                 target_path = target.format(**utils.snap_env)
@@ -136,7 +156,6 @@ class OpenStackSnap(object):
 
     def execute(self, argv):
         '''Execute snap command building out configuration and log options'''
-        renderer = SnapFileRenderer()
         utils = SnapUtils()
         setup = self.configuration['setup']
 
@@ -232,16 +251,9 @@ class OpenStackSnap(object):
             default_user, default_group = default_owner.split(':')
             default_file_mode = setup.get('default-file-mode',
                                           DEFAULT_FILE_MODE)
-            for template in setup.get('templates', []):
-                target = setup['templates'][template]
-                target_file = target.format(**utils.snap_env)
-                utils.ensure_dir(target_file, is_file=True)
-                LOG.debug('Rendering {} to {}'.format(template,
-                                                      target_file))
-                with open(target_file, 'w') as tf:
-                    tf.write(renderer.render(template, utils.snap_env))
-                utils.chmod(target_file, default_file_mode)
-                utils.chown(target_file, default_user, default_group)
+
+            _render_templates(entry_point.get('templates', []), utils.snap_env,
+                              default_file_mode, default_user, default_group)
 
         elif cmd_type == NGINX_EP_TYPE:
             cmd = ["{snap}/usr/sbin/nginx".format(**utils.snap_env)]
