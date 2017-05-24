@@ -178,15 +178,27 @@ class OpenStackSnap(object):
 
         if cmd_type == DEFAULT_EP_TYPE:
             cmd = [entry_point['binary'].format(**utils.snap_env)]
-            for cfile in entry_point.get('config-files', []):
-                cfile = cfile.format(**utils.snap_env)
-                if os.path.exists(cfile):
-                    cmd.append('--config-file={}'.format(cfile))
-                else:
-                    LOG.debug('Configuration file {} not found'
-                              ', skipping'.format(cfile))
 
-            for cdir in entry_point.get('config-dirs', []):
+            cfile_o = entry_point.get('config-file-override')
+            if cfile_o:
+                cfile_o = cfile_o.format(**utils.snap_env)
+                if os.path.exists(cfile_o):
+                    cmd.append('--config-file={}'.format(cfile_o))
+                else:
+                    cfile_o = None
+
+            if not cfile_o:
+                cfile = entry_point.get('config-file')
+                if cfile:
+                    cfile = cfile.format(**utils.snap_env)
+                    if os.path.exists(cfile):
+                        cmd.append('--config-file={}'.format(cfile))
+                    else:
+                        LOG.debug('Configuration file {} not found'
+                                  ', skipping'.format(cfile))
+
+            cdir = entry_point.get('config-dir')
+            if cdir:
                 cdir = cdir.format(**utils.snap_env)
                 if os.path.exists(cdir):
                     cmd.append('--config-dir={}'.format(cdir))
@@ -207,26 +219,48 @@ class OpenStackSnap(object):
             defaults = [d.format(**utils.snap_env) for d in DEFAULT_UWSGI_ARGS]
             cmd.extend(defaults)
             pyargv = []
+            uwsgi_override = False
 
-            uwsgi_dir = entry_point.get('uwsgi-dir')
-            if uwsgi_dir:
-                uwsgi_dir = uwsgi_dir.format(**utils.snap_env)
-                cmd.append(uwsgi_dir)
+            uwsgi_dir_o = entry_point.get('uwsgi-dir-override')
+            if uwsgi_dir_o:
+                uwsgi_dir_o = uwsgi_dir_o.format(**utils.snap_env)
+                for f in os.listdir(uwsgi_dir_o):
+                    if os.path.isfile(os.path.join(uwsgi_dir_o, f)):
+                        uwsgi_override = True
+                        cmd.append(uwsgi_dir_o)
+                        break
+
+            if not uwsgi_override:
+                uwsgi_dir = entry_point.get('uwsgi-dir')
+                if uwsgi_dir:
+                    uwsgi_dir = uwsgi_dir.format(**utils.snap_env)
+                    cmd.append(uwsgi_dir)
 
             uwsgi_log = entry_point.get('uwsgi-log')
             if uwsgi_log:
                 uwsgi_log = uwsgi_log.format(**utils.snap_env)
                 cmd.extend(['--logto', uwsgi_log])
 
-            for cfile in entry_point.get('config-files', []):
-                cfile = cfile.format(**utils.snap_env)
-                if os.path.exists(cfile):
-                    pyargv.append('--config-file={}'.format(cfile))
+            cfile_o = entry_point.get('config-file-override')
+            if cfile_o:
+                cfile_o = cfile_o.format(**utils.snap_env)
+                if os.path.exists(cfile_o):
+                    pyargv.append('--config-file={}'.format(cfile_o))
                 else:
-                    LOG.debug('Configuration file {} not found'
-                              ', skipping'.format(cfile))
+                    cfile_o = None
 
-            for cdir in entry_point.get('config-dirs', []):
+            if not cfile_o:
+                cfile = entry_point.get('config-file')
+                if cfile:
+                    cfile = cfile.format(**utils.snap_env)
+                    if os.path.exists(cfile):
+                        pyargv.append('--config-file={}'.format(cfile))
+                    else:
+                        LOG.debug('Configuration file {} not found'
+                                  ', skipping'.format(cfile))
+
+            cdir = entry_point.get('config-dir')
+            if cdir:
                 cdir = cdir.format(**utils.snap_env)
                 if os.path.exists(cdir):
                     pyargv.append('--config-dir={}'.format(cdir))
@@ -237,7 +271,6 @@ class OpenStackSnap(object):
             log_file = entry_point.get('log-file')
             if log_file:
                 log_file = log_file.format(**utils.snap_env)
-
                 pyargv.append('--log-file={}'.format(log_file))
 
             # NOTE(jamespage): Pass dynamically built pyargv into
@@ -259,14 +292,23 @@ class OpenStackSnap(object):
             cmd = ["{snap}/usr/sbin/nginx".format(**utils.snap_env)]
             cmd.extend(DEFAULT_NGINX_ARGS)
 
-            cfile = entry_point.get('config-file')
-            if cfile:
-                cfile = cfile.format(**utils.snap_env)
-                if os.path.exists(cfile):
-                    cmd.extend(['-c', '{}'.format(cfile)])
+            cfile_o = entry_point.get('config-file-override')
+            if cfile_o:
+                cfile_o = cfile_o.format(**utils.snap_env)
+                if os.path.exists(cfile_o):
+                    cmd.extend(['-c', '{}'.format(cfile_o)])
                 else:
-                    LOG.debug('Configuration file {} not found'
-                              ', skipping'.format(cfile))
+                    cfile_o = None
+
+            if not cfile_o:
+                cfile = entry_point.get('config-file')
+                if cfile:
+                    cfile = cfile.format(**utils.snap_env)
+                    if os.path.exists(cfile):
+                        cmd.extend(['-c', '{}'.format(cfile)])
+                    else:
+                        LOG.debug('Configuration file {} not found'
+                                  ', skipping'.format(cfile))
 
         if 'run-as' in entry_point.keys():
             user, groups = list(entry_point['run-as'].items())[0]
