@@ -20,6 +20,7 @@ Tests for `snap_openstack` module.
 """
 
 import os
+import sys
 
 from mock import mock_open
 from mock import patch
@@ -31,8 +32,8 @@ TEST_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                         'data')
 
 MOCK_SNAP_ENV = {
-    'snap_common': '/var/snap/test/common',
-    'snap': '/snap/common',
+    'snap_common': '/var/snap/keystone/common',
+    'snap': '/snap/keystone/current',
 }
 
 
@@ -42,8 +43,20 @@ class TestOpenStackSnapExecute(test_base.TestCase):
     def mock_exists(cls, path):
         '''Test helper for os.path.exists'''
         paths = {
-            '/etc/nova/nova.conf': True,
-            '/etc/nova/conf.d': True,
+            '/snap/keystone/current/etc/keystone/keystone.conf': True,
+            '/var/snap/keystone/common/etc/keystone/conf.d': True,
+            '/var/snap/keystone/common/etc/nginx/nginx-snap.conf': True,
+        }
+        return paths.get(path, False)
+
+    def mock_exists_overrides(cls, path):
+        '''Test helper for os.path.exists'''
+        paths = {
+            '/snap/keystone/current/etc/keystone/keystone.conf': True,
+            '/var/snap/keystone/common/etc/keystone/keystone.conf': True,
+            '/var/snap/keystone/common/etc/keystone/conf.d': True,
+            '/var/snap/keystone/common/etc/nginx/nginx-snap.conf': True,
+            '/var/snap/keystone/common/etc/nginx/nginx.conf': True,
         }
         return paths.get(path, False)
 
@@ -63,13 +76,32 @@ class TestOpenStackSnapExecute(test_base.TestCase):
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists
         snap.execute(['snap-openstack',
-                      'nova-scheduler'])
+                      'keystone-manage'])
         mock_os.execvp.assert_called_with(
-            'nova-scheduler',
-            ['nova-scheduler',
-             '--config-file=/etc/nova/nova.conf',
-             '--config-dir=/etc/nova/conf.d',
-             '--log-file=/var/log/nova/scheduler.log']
+            '/snap/keystone/current/bin/keystone-manage',
+            ['/snap/keystone/current/bin/keystone-manage',
+             '--config-file=/snap/keystone/current/etc/keystone/keystone.conf',
+             '--config-dir=/var/snap/keystone/common/etc/keystone/conf.d']
+        )
+
+    @patch.object(base, 'SnapFileRenderer')
+    @patch('snap_openstack.base.SnapUtils')
+    @patch.object(base, 'os')
+    def test_base_snap_config_override(self, mock_os, mock_utils,
+                                       mock_renderer):
+        '''Ensure wrapped binary called with full args list'''
+        self.mock_snap_utils(mock_utils)
+        snap = base.OpenStackSnap(os.path.join(TEST_DIR,
+                                               'snap-openstack.yaml'))
+        mock_os.path.exists.side_effect = self.mock_exists_overrides
+        snap.execute(['snap-openstack',
+                      'keystone-manage'])
+        mock_os.execvp.assert_called_with(
+            '/snap/keystone/current/bin/keystone-manage',
+            ['/snap/keystone/current/bin/keystone-manage',
+             '--config-file=/var/snap/keystone/common/etc/keystone/'
+             'keystone.conf',
+             '--config-dir=/var/snap/keystone/common/etc/keystone/conf.d']
         )
 
     @patch.object(base, 'SnapFileRenderer')
@@ -83,13 +115,13 @@ class TestOpenStackSnapExecute(test_base.TestCase):
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists
         snap.execute(['snap-openstack',
-                      'nova-manage',
+                      'keystone-manage',
                       'db', 'sync'])
         mock_os.execvp.assert_called_with(
-            'nova-manage',
-            ['nova-manage',
-             '--config-file=/etc/nova/nova.conf',
-             '--config-dir=/etc/nova/conf.d',
+            '/snap/keystone/current/bin/keystone-manage',
+            ['/snap/keystone/current/bin/keystone-manage',
+             '--config-file=/snap/keystone/current/etc/keystone/keystone.conf',
+             '--config-dir=/var/snap/keystone/common/etc/keystone/conf.d',
              'db', 'sync']
         )
 
@@ -106,7 +138,7 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         self.assertRaises(ValueError,
                           snap.execute,
                           ['snap-openstack',
-                           'nova-api'])
+                           'keystone-api'])
 
     @patch.object(base, 'SnapFileRenderer')
     @patch('snap_openstack.base.SnapUtils')
@@ -118,15 +150,45 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists
-        with patch('__builtin__.open', mock_open(), create=True):
+        builtin = '__builtin__'
+        if sys.version_info > (3, 0):
+            builtin = 'builtins'
+        with patch('{}.open'.format(builtin), mock_open(), create=True):
             snap.execute(['snap-openstack',
                           'keystone-uwsgi'])
         mock_os.execvp.assert_called_with(
-            '/snap/common/bin/uwsgi',
-            ['/snap/common/bin/uwsgi', '--master',
-             '--die-on-term', '-H', '/snap/common/usr',
-             '--emperor', '/etc/uwsgi',
-             '--logto', '/var/log/uwsgi/keystone.log']
+            '/snap/keystone/current/bin/uwsgi',
+            ['/snap/keystone/current/bin/uwsgi', '--master',
+             '--die-on-term', '-H', '/snap/keystone/current/usr',
+             '--emperor', '/var/snap/keystone/common/etc/uwsgi/snap',
+             '--logto', '/var/snap/keystone/common/log/uwsgi.log']
+        )
+
+    @patch.object(base, 'SnapFileRenderer')
+    @patch('snap_openstack.base.SnapUtils')
+    @patch.object(base, 'os')
+    def test_base_snap_config_uwsgi_override(self, mock_os, mock_utils,
+                                             mock_renderer):
+        '''Ensure wrapped binary of uwsgi called with correct arguments'''
+        self.mock_snap_utils(mock_utils)
+        snap = base.OpenStackSnap(os.path.join(TEST_DIR,
+                                               'snap-openstack.yaml'))
+        mock_os.path.exists.side_effect = self.mock_exists_overrides
+        mock_os.listdir.side_effect = (
+            '/var/snap/keystone/common/etc/uwsgi/config.ini'
+        )
+        builtin = '__builtin__'
+        if sys.version_info > (3, 0):
+            builtin = 'builtins'
+        with patch('{}.open'.format(builtin), mock_open(), create=True):
+            snap.execute(['snap-openstack',
+                          'keystone-uwsgi'])
+        mock_os.execvp.assert_called_with(
+            '/snap/keystone/current/bin/uwsgi',
+            ['/snap/keystone/current/bin/uwsgi', '--master',
+             '--die-on-term', '-H', '/snap/keystone/current/usr',
+             '--emperor', '/var/snap/keystone/common/etc/uwsgi',
+             '--logto', '/var/snap/keystone/common/log/uwsgi.log']
         )
 
     @patch.object(base, 'SnapFileRenderer')
@@ -142,9 +204,29 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         snap.execute(['snap-openstack',
                       'keystone-nginx'])
         mock_os.execvp.assert_called_with(
-            '/snap/common/usr/sbin/nginx',
-            ['/snap/common/usr/sbin/nginx', '-g',
-             'daemon on; master_process on;']
+            '/snap/keystone/current/usr/sbin/nginx',
+            ['/snap/keystone/current/usr/sbin/nginx', '-g',
+             'daemon on; master_process on;',
+             '-c', '/var/snap/keystone/common/etc/nginx/nginx-snap.conf']
+        )
+
+    @patch.object(base, 'SnapFileRenderer')
+    @patch('snap_openstack.base.SnapUtils')
+    @patch.object(base, 'os')
+    def test_base_snap_config_nginx_override(self, mock_os, mock_utils,
+                                             mock_renderer):
+        '''Ensure wrapped binary of nginx called with correct arguments'''
+        self.mock_snap_utils(mock_utils)
+        snap = base.OpenStackSnap(os.path.join(TEST_DIR,
+                                               'snap-openstack.yaml'))
+        mock_os.path.exists.side_effect = self.mock_exists_overrides
+        snap.execute(['snap-openstack',
+                      'keystone-nginx'])
+        mock_os.execvp.assert_called_with(
+            '/snap/keystone/current/usr/sbin/nginx',
+            ['/snap/keystone/current/usr/sbin/nginx', '-g',
+             'daemon on; master_process on;',
+             '-c', '/var/snap/keystone/common/etc/nginx/nginx.conf']
         )
 
     @patch.object(base, 'SnapFileRenderer')
@@ -160,4 +242,4 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         self.assertRaises(ValueError,
                           snap.execute,
                           ['snap-openstack',
-                           'nova-broken'])
+                           'keystone-broken'])
