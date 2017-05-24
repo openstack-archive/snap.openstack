@@ -1,48 +1,34 @@
 # Basic test yaml for snap-openstack
 setup:
   dirs:
-    - "{snap_common}/etc/nova.conf.d"
-    - "{snap_common}/etc/nova"
+    - "{snap_common}/etc/keystone.conf.d"
+    - "{snap_common}/etc/keystone"
     - "{snap_common}/log"
   templates:
-    "nova-snap.conf.j2": "{snap_common}/etc/nova.conf.d/nova-snap.conf"
+    "keystone-snap.conf.j2": "{snap_common}/etc/keystone/conf.d/keystone-snap.conf"
 entry_points:
-  nova-manage:
-    binary: nova-manage
-    config-files:
-      - "/etc/nova/nova.conf"
-    config-dirs:
-      - "/etc/nova/conf.d"
+  keystone-manage:
+    binary: "{snap}/bin/keystone-manage"
+    config-file: "{snap}/etc/keystone/keystone.conf"
+    config-file-override: "{snap_common}/etc/keystone/keystone.conf"
+    config-dir: "{snap_common}/etc/keystone/conf.d"
     run-as:
-      nova: [nova]
-  nova-scheduler:
-    type: simple
-    binary: nova-scheduler
-    config-files:
-      - "/etc/nova/nova.conf"
-    config-dirs:
-      - "/etc/nova/conf.d"
-    log-file: "/var/log/nova/scheduler.log"
-    run-as:
-      nova: [nova]
+      snap-keystone: [snap-keystone]
   keystone-uwsgi:
     type: uwsgi
-    uwsgi-dir: "/etc/uwsgi"
-    uwsgi-log: "/var/log/uwsgi/keystone.log"
-    config-files:
-      - "/etc/keystone/keystone.conf"
-    config-dirs:
-      - "/etc/keystone/conf.d"
-    log-file: "/var/log/keystone/keystone.log"
+    uwsgi-dir: "{snap_common}/etc/uwsgi/snap"
+    uwsgi-dir-override: "{snap_common}/etc/uwsgi"
+    uwsgi-log: "{snap_common}/log/uwsgi.log"
+    config-file: "{snap}/etc/keystone/keystone.conf"
+    config-file-override: "{snap_common}/etc/keystone/keystone.conf"
+    config-dir: "{snap_common}/etc/keystone/conf.d"
+    log-file: "{snap_common}/log/keystone.log"
     templates:
-      "admin.ini.j2": "/etc/uwsgi/admin.ini"
+      admin-snap.ini.j2: "{snap_common}/etc/uwsgi/admin-snap.ini"
+      public-snap.ini.j2: "{snap_common}/etc/uwsgi/public-snap.ini"
+    run-as:
+      snap-keystone: [snap-keystone]
   keystone-nginx:
     type: nginx
-    config-file: "/etc/nginx/keystone/nginx.conf"
-    run-as:
-      nova: [nova]
-  nova-broken:
-    type: unknown
-    binary: nova-broken
-    run-as:
-      nova: [nova]
+    config-file: "{snap_common}/etc/nginx/nginx-snap.conf"
+    config-file-override: "{snap_common}/etc/nginx/nginx.conf"
