@@ -9,9 +9,12 @@ setup:
 entry_points:
   keystone-manage:
     binary: "{snap}/bin/keystone-manage"
-    config-file: "{snap}/etc/keystone/keystone.conf"
-    config-file-override: "{snap_common}/etc/keystone/keystone.conf"
-    config-dir: "{snap_common}/etc/keystone/conf.d"
+    config-files:
+      - "{snap}/etc/keystone/keystone.conf"
+    config-files-override:
+      - "{snap_common}/etc/keystone/keystone.conf"
+    config-dirs:
+      - "{snap_common}/etc/keystone/conf.d"
     run-as:
       snap-keystone: [snap-keystone]
   keystone-uwsgi:
@@ -19,9 +22,12 @@ entry_points:
     uwsgi-dir: "{snap_common}/etc/uwsgi/snap"
     uwsgi-dir-override: "{snap_common}/etc/uwsgi"
     uwsgi-log: "{snap_common}/log/uwsgi.log"
-    config-file: "{snap}/etc/keystone/keystone.conf"
-    config-file-override: "{snap_common}/etc/keystone/keystone.conf"
-    config-dir: "{snap_common}/etc/keystone/conf.d"
+    config-files:
+      - "{snap}/etc/keystone/keystone.conf"
+    config-files-override:
+      - "{snap_common}/etc/keystone/keystone.conf"
+    config-dirs:
+      - "{snap_common}/etc/keystone/conf.d"
     log-file: "{snap_common}/log/keystone.log"
     templates:
       admin-snap.ini.j2: "{snap_common}/etc/uwsgi/admin-snap.ini"

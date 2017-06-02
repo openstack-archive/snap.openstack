@@ -75,6 +75,7 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists
+        mock_os.path.basename.side_effect = 'keystone.conf'
         snap.execute(['snap-openstack',
                       'keystone-manage'])
         mock_os.execvp.assert_called_with(
@@ -94,6 +95,7 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists_overrides
+        mock_os.path.basename.side_effect = 'keystone.conf'
         snap.execute(['snap-openstack',
                       'keystone-manage'])
         mock_os.execvp.assert_called_with(
@@ -114,6 +116,7 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists
+        mock_os.path.basename.side_effect = 'keystone.conf'
         snap.execute(['snap-openstack',
                       'keystone-manage',
                       'db', 'sync'])
@@ -150,6 +153,7 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists
+        mock_os.path.basename.side_effect = 'keystone.conf'
         builtin = '__builtin__'
         if sys.version_info > (3, 0):
             builtin = 'builtins'
@@ -174,6 +178,7 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         snap = base.OpenStackSnap(os.path.join(TEST_DIR,
                                                'snap-openstack.yaml'))
         mock_os.path.exists.side_effect = self.mock_exists_overrides
+        mock_os.path.basename.side_effect = 'keystone.conf'
         mock_os.listdir.side_effect = (
             '/var/snap/keystone/common/etc/uwsgi/config.ini'
         )
