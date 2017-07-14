@@ -41,7 +41,6 @@ DEFAULT_UWSGI_ARGS = ["--master",
 DEFAULT_NGINX_ARGS = ["-g",
                       "daemon on; master_process on;"]
 
-DEFAULT_OWNER = "root:root"
 DEFAULT_DIR_MODE = 0o750
 DEFAULT_FILE_MODE = 0o640
 
@@ -155,49 +154,13 @@ class OpenStackSnap(object):
 
         with lockutils.lock('setup.lock', external=True,
                             lock_path=lock_file):
-            if 'users' in setup.keys():
-                for user, groups in setup['users'].items():
-                    home = os.path.join(
-                        "{snap_common}".format(**utils.snap_env),
-                        "lib", user
-                    )
-                    utils.add_user(user, groups, home)
-
-            default_owner = setup.get('default-owner', DEFAULT_OWNER)
-            default_user, default_group = default_owner.split(':')
-            default_dir_mode = setup.get('default-dir-mode',
-                                         DEFAULT_DIR_MODE)
-            default_file_mode = setup.get('default-file-mode',
-                                          DEFAULT_FILE_MODE)
 
             for directory in setup.get('dirs', []):
                 dir_name = directory.format(**utils.snap_env)
-                utils.ensure_dir(dir_name, perms=default_dir_mode)
-                utils.rchmod(dir_name, default_dir_mode, default_file_mode)
-                utils.rchown(dir_name, default_user, default_group)
-
-            if 'copyfiles' in setup.keys():
-                for source, target in setup['copyfiles'].items():
-                    source_dir = source.format(**utils.snap_env)
-                    dest_dir = target.format(**utils.snap_env)
-                    for source_name in os.listdir(source_dir):
-                        s_file = os.path.join(source_dir, source_name)
-                        d_file = os.path.join(dest_dir, source_name)
-                        if not os.path.isfile(s_file):
-                            continue
-                        LOG.debug('Copying file {} to {}'.format(s_file,
-                                                                 d_file))
-                        shutil.copy2(s_file, d_file)
-                        utils.chmod(d_file, default_file_mode)
-                        utils.chown(d_file, default_user, default_group)
+                utils.ensure_dir(dir_name, perms=DEFAULT_DIR_MODE)
 
             _render_templates(setup.get('templates', []), utils.snap_env,
-                              default_file_mode, default_user, default_group)
-
-            for target in setup.get('rchown', []):
-                target_path = target.format(**utils.snap_env)
-                user, group = setup['rchown'][target].split(':')
-                utils.rchown(target_path, user, group)
+                              DEFAULT_FILE_MODE, 'root', 'root')
 
             for target in setup.get('chmod', []):
                 target_path = target.format(**utils.snap_env)
@@ -308,13 +271,8 @@ class OpenStackSnap(object):
                 snap_env['pyargv'] = ' '.join(pyargv)
                 LOG.debug('Setting pyargv to: {}'.format(' '.join(pyargv)))
 
-            default_owner = setup.get('default-owner', DEFAULT_OWNER)
-            default_user, default_group = default_owner.split(':')
-            default_file_mode = setup.get('default-file-mode',
-                                          DEFAULT_FILE_MODE)
-
             _render_templates(entry_point.get('templates', []), snap_env,
-                              default_file_mode, default_user, default_group)
+                              DEFAULT_FILE_MODE, 'root', 'root')
 
         elif cmd_type == NGINX_EP_TYPE:
             cmd = ["{snap}/usr/sbin/nginx".format(**utils.snap_env)]
@@ -337,10 +295,6 @@ class OpenStackSnap(object):
                     else:
                         LOG.debug('Configuration file {} not found'
                                   ', skipping'.format(cfile))
-
-        if 'run-as' in entry_point.keys():
-            user, groups = list(entry_point['run-as'].items())[0]
-            utils.drop_privileges(user, groups)
 
         LOG.debug('Executing command {}'.format(' '.join(cmd)))
         os.execvp(cmd[0], cmd)
