@@ -22,6 +22,7 @@ Tests for `snap_openstack` module.
 import os
 import sys
 
+from mock import call
 from mock import mock_open
 from mock import patch
 
@@ -33,6 +34,7 @@ TEST_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),
 
 MOCK_SNAP_ENV = {
     'snap_common': '/var/snap/keystone/common',
+    'snap_data': '/var/snap/keystone/x1',
     'snap': '/snap/keystone/current',
 }
 
@@ -64,8 +66,10 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         return paths.get(path, False)
 
     def mock_snap_utils(self, mock_utils):
-        snap_utils = mock_utils.return_value
-        snap_utils.snap_env = MOCK_SNAP_ENV
+        '''Mock SnapUtils code'''
+        mock_utils_obj = mock_utils.return_value
+        mock_utils_obj.snap_env = MOCK_SNAP_ENV
+        return mock_utils_obj
 
     @patch.object(base, 'SnapFileRenderer')
     @patch('snap_openstack.base.SnapUtils')
@@ -253,3 +257,56 @@ class TestOpenStackSnapExecute(test_base.TestCase):
                           snap.execute,
                           ['snap-openstack',
                            'keystone-broken'])
+
+
+class TestOpenStackSnapSetup(test_base.TestCase):
+
+    def mock_snap_utils(self, mock_utils):
+        '''Mock SnapUtils code'''
+        mock_utils_obj = mock_utils.return_value
+        mock_utils_obj.snap_env = MOCK_SNAP_ENV
+        mock_utils_obj.ensure_dir.return_value = None
+        mock_utils_obj.chmod.return_value = None
+        mock_utils_obj.chown.return_value = None
+        return mock_utils_obj
+
+    @patch.object(base, 'SnapFileRenderer')
+    @patch('snap_openstack.base.SnapUtils')
+    @patch('oslo_concurrency.lockutils.lock')
+    @patch.object(base, 'os')
+    def test_base_setup(self, mock_os, mock_lock, mock_utils, mock_renderer):
+        '''Ensure setup method handles snap-openstack.yaml keys/values'''
+        mock_utils_obj = self.mock_snap_utils(mock_utils)
+        snap = base.OpenStackSnap(os.path.join(TEST_DIR,
+                                               'snap-openstack.yaml'))
+        builtin = '__builtin__'
+        if sys.version_info > (3, 0):
+            builtin = 'builtins'
+        with patch('{}.open'.format(builtin), mock_open(), create=True):
+            snap.setup()
+        mock_lock.assert_called_once_with(
+            'setup.lock', external=True,
+            lock_path='/var/snap/keystone/x1/snap-openstack')
+        mock_utils_obj.chmod.assert_called_with(
+            '/var/snap/keystone/common/lib', 0o755)
+        mock_utils_obj.chown.assert_called_with(
+            '/var/snap/keystone/common/lib', 'root', 'root')
+        expected = [
+            call('/var/snap/keystone/common/etc/keystone/keystone.conf.d',
+                 perms=488),
+            call('/var/snap/keystone/common/etc/nginx/sites-enabled',
+                 perms=488),
+            call('/var/snap/keystone/common/etc/nginx/snap/sites-enabled',
+                 perms=488),
+            call('/var/snap/keystone/common/etc/uwsgi/snap',
+                 perms=488),
+            call('/var/snap/keystone/common/etc/keystone/keystone.conf.d/'
+                 'keystone-snap.conf',
+                 is_file=True),
+            call('/var/snap/keystone/common/etc/nginx/snap/sites-enabled/'
+                 'keystone.conf',
+                 is_file=True),
+            call('/var/snap/keystone/common/etc/nginx/snap/nginx.conf',
+                 is_file=True)
+        ]
+        mock_utils_obj.ensure_dir.assert_has_calls(expected, any_order=True)
