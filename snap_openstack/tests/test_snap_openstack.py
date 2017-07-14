@@ -44,8 +44,9 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         '''Test helper for os.path.exists'''
         paths = {
             '/snap/keystone/current/etc/keystone/keystone.conf': True,
-            '/var/snap/keystone/common/etc/keystone/conf.d': True,
-            '/var/snap/keystone/common/etc/nginx/nginx-snap.conf': True,
+            '/var/snap/keystone/common/etc/keystone/keystone.conf.d': True,
+            '/var/snap/keystone/common/etc/nginx/snap/nginx.conf': True,
+            '/var/snap/keystone/common/etc/uwsgi/snap/keystone.ini': True,
         }
         return paths.get(path, False)
 
@@ -53,10 +54,12 @@ class TestOpenStackSnapExecute(test_base.TestCase):
         '''Test helper for os.path.exists'''
         paths = {
             '/snap/keystone/current/etc/keystone/keystone.conf': True,
+            '/var/snap/keystone/common/etc/keystone/keystone.conf.d': True,
             '/var/snap/keystone/common/etc/keystone/keystone.conf': True,
-            '/var/snap/keystone/common/etc/keystone/conf.d': True,
-            '/var/snap/keystone/common/etc/nginx/nginx-snap.conf': True,
+            '/var/snap/keystone/common/etc/nginx/snap/nginx.conf': True,
             '/var/snap/keystone/common/etc/nginx/nginx.conf': True,
+            '/var/snap/keystone/common/etc/uwsgi/snap/keystone.ini': True,
+            '/var/snap/keystone/common/etc/uwsgi/keystone.ini': True,
         }
         return paths.get(path, False)
 
@@ -81,7 +84,8 @@ class TestOpenStackSnapExecute(test_base.TestCase):
             '/snap/keystone/current/bin/keystone-manage',
             ['/snap/keystone/current/bin/keystone-manage',
              '--config-file=/snap/keystone/current/etc/keystone/keystone.conf',
-             '--config-dir=/var/snap/keystone/common/etc/keystone/conf.d']
+             '--config-dir=/var/snap/keystone/common/etc/keystone/'
+             'keystone.conf.d']
         )
 
     @patch.object(base, 'SnapFileRenderer')
@@ -102,7 +106,8 @@ class TestOpenStackSnapExecute(test_base.TestCase):
             ['/snap/keystone/current/bin/keystone-manage',
              '--config-file=/var/snap/keystone/common/etc/keystone/'
              'keystone.conf',
-             '--config-dir=/var/snap/keystone/common/etc/keystone/conf.d']
+             '--config-dir=/var/snap/keystone/common/etc/keystone/'
+             'keystone.conf.d']
         )
 
     @patch.object(base, 'SnapFileRenderer')
@@ -123,7 +128,8 @@ class TestOpenStackSnapExecute(test_base.TestCase):
             '/snap/keystone/current/bin/keystone-manage',
             ['/snap/keystone/current/bin/keystone-manage',
              '--config-file=/snap/keystone/current/etc/keystone/keystone.conf',
-             '--config-dir=/var/snap/keystone/common/etc/keystone/conf.d',
+             '--config-dir=/var/snap/keystone/common/etc/keystone/'
+             'keystone.conf.d',
              'db', 'sync']
         )
 
@@ -211,7 +217,7 @@ class TestOpenStackSnapExecute(test_base.TestCase):
             '/snap/keystone/current/usr/sbin/nginx',
             ['/snap/keystone/current/usr/sbin/nginx', '-g',
              'daemon on; master_process on;',
-             '-c', '/var/snap/keystone/common/etc/nginx/nginx-snap.conf']
+             '-c', '/var/snap/keystone/common/etc/nginx/snap/nginx.conf']
         )
 
     @patch.object(base, 'SnapFileRenderer')
