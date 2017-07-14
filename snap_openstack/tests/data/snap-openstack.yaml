@@ -1,19 +1,20 @@
 # Basic test yaml for snap-openstack
+# This file is taken directly from the keystone snap, except as noted below.
 setup:
   dirs:
+    # Some dirs were trimmed from keystone's snap-openstack.yaml to minimize test code.
     - "{snap_common}/etc/keystone/keystone.conf.d"
     - "{snap_common}/etc/nginx/sites-enabled"
     - "{snap_common}/etc/nginx/snap/sites-enabled"
     - "{snap_common}/etc/uwsgi/snap"
-    - "{snap_common}/fernet-keys"
-    - "{snap_common}/lib"
-    - "{snap_common}/lock"
-    - "{snap_common}/log"
-    - "{snap_common}/run"
   templates:
     keystone-nginx.conf.j2: "{snap_common}/etc/nginx/snap/sites-enabled/keystone.conf"
     keystone-snap.conf.j2: "{snap_common}/etc/keystone/keystone.conf.d/keystone-snap.conf"
     nginx.conf.j2: "{snap_common}/etc/nginx/snap/nginx.conf"
+  chmod: # Doesn't exist in keystone's snap-openstack.yaml. Added for testing purposes.
+    "{snap_common}/lib": 0755
+  chown: # Doesn't exist in keystone's snap-openstack.yaml. Added for testing purposes.
+    "{snap_common}/lib": "root:root"
 entry_points:
   keystone-manage:
     binary: "{snap}/bin/keystone-manage"
