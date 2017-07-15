@@ -28,6 +28,7 @@ from mock import patch
 
 from snap_openstack import base
 from snap_openstack.tests import base as test_base
+from snap_openstack import utils
 
 TEST_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                         'data')
@@ -310,3 +311,73 @@ class TestOpenStackSnapSetup(test_base.TestCase):
                  is_file=True)
         ]
         mock_utils_obj.ensure_dir.assert_has_calls(expected, any_order=True)
+
+
+class TestSnapUtils(test_base.TestCase):
+
+    @patch.object(utils, 'os')
+    def test_init(self, mock_os):
+        '''Ensure __init__() and _collect_snap_env() behave as expected'''
+        utils.SnapUtils()
+        expected = [
+            call('SNAP_NAME'),
+            call('SNAP_VERSION'),
+            call('SNAP_REVISION'),
+            call('SNAP_ARCH'),
+            call('SNAP_LIBRARY_PATH'),
+            call('SNAP'),
+            call('SNAP_DATA'),
+            call('SNAP_COMMON'),
+            call('SNAP_USER_DATA'),
+            call('SNAP_USER_COMMON'),
+            call('TMPDIR'),
+        ]
+        mock_os.environ.get.assert_has_calls(expected, any_order=True)
+
+    @patch.object(utils, 'os')
+    def test_ensure_dir(self, mock_os):
+        '''Ensure ensure_dir behaves as expected for a directory'''
+        snap_utils = utils.SnapUtils()
+        mock_os.path.exists.return_value = False
+        mock_os.path.dirname.return_value = '/var/snap/keystone/common/lib'
+        snap_utils.ensure_dir('/var/snap/keystone/common/lib/file',
+                              is_file=True, perms=0o755)
+        mock_os.path.dirname.assert_called_with('/var/snap/keystone/common/'
+                                                'lib/file')
+        mock_os.path.exists.assert_called_with('/var/snap/keystone/common/lib')
+        mock_os.makedirs.assert_called_with('/var/snap/keystone/common/lib',
+                                            0o755)
+
+    @patch.object(utils, 'os')
+    def test_ensure_dir_is_file(self, mock_os):
+        '''Ensure ensure_dir behaves as expected for a file'''
+        snap_utils = utils.SnapUtils()
+        mock_os.path.exists.return_value = False
+        snap_utils.ensure_dir('/var/snap/keystone/common/lib', perms=0o755)
+        mock_os.path.exists.assert_called_with('/var/snap/keystone/common/lib')
+        mock_os.makedirs.assert_called_with('/var/snap/keystone/common/lib',
+                                            0o755)
+
+    @patch.object(utils, 'pwd')
+    @patch.object(utils, 'grp')
+    @patch.object(utils, 'os')
+    def test_chown(self, mock_os, mock_grp, mock_pwd):
+        '''Ensure chown behaves as expected'''
+        class Ids(object):
+            pw_uid = 0
+            gr_gid = 0
+        snap_utils = utils.SnapUtils()
+        mock_pwd.getpwnam.return_value = Ids()
+        mock_grp.getgrnam.return_value = Ids()
+        snap_utils.chown('/var/snap/keystone/common/lib', 'root', 'root')
+        mock_pwd.getpwnam.assert_called_with('root')
+        mock_grp.getgrnam.assert_called_with('root')
+        mock_os.chown.assert_called_with('/var/snap/keystone/common/lib', 0, 0)
+
+    @patch.object(utils, 'os')
+    def test_chmod(self, mock_os):
+        '''Ensure chmod behaves as expected'''
+        snap_utils = utils.SnapUtils()
+        snap_utils.chmod('/var/snap/keystone/common/lib', 0o750)
+        mock_os.chmod.assert_called_with('/var/snap/keystone/common/lib',
+                                         0o750)
