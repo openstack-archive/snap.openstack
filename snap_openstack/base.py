@@ -134,6 +134,23 @@ def _get_os_log_file(entry_point):
     return option
 
 
+def _build_environment():
+    '''Prepare any snap specific environment additions
+
+    This function will automatically add REQUEST_CA_BUNDLE
+    if $SNAP_COMMON/etc/ssl/certs/ca-certificates.crt is detected.
+    '''
+    utils = SnapUtils()
+    env = os.environ.copy()
+    ca_certs = (
+        '{snap_common}/etc/ssl/certs/ca-certificates.crt'.format(
+            **utils.snap_env)
+    )
+    if os.path.exists(ca_certs):
+        env['REQUESTS_CA_BUNDLE'] = ca_certs
+    return env
+
+
 class OpenStackSnap(object):
     '''Main executor class for snap-openstack'''
 
@@ -295,4 +312,4 @@ class OpenStackSnap(object):
                                   ', skipping'.format(cfile))
 
         LOG.debug('Executing command {}'.format(' '.join(cmd)))
-        os.execvp(cmd[0], cmd)
+        os.execvpe(cmd[0], cmd, _build_environment())
