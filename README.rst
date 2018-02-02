@@ -58,7 +58,6 @@ using:
 any additional arguments provided will be passed to the underlying binary.
 
 * Free software: Apache license
-* Documentation: http://docs.openstack.org/developer/snap.openstack
 * Source: http://git.openstack.org/cgit/openstack/snap.openstack
 * Bugs: http://bugs.launchpad.net/snap.openstack
 
